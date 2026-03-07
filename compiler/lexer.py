@@ -8,6 +8,7 @@ class TokenType(Enum):
     IF = auto()
     WHILE = auto()
     RETURN = auto()
+    ELSE = auto()
     
     # Identifiers and numbers
     IDENT = auto()
@@ -40,6 +41,8 @@ KEYWORDS = {
         "if": TokenType.IF,
         "while": TokenType.WHILE,
         "return": TokenType.RETURN,
+        "else": TokenType.ELSE,
+        "int": TokenType.INT
     }
 
 class Token:
@@ -102,7 +105,6 @@ class Lexer:
         if (c == "\0"):
             return Token(TokenType.EOF)
         elif (c.isdigit()):
-            print(c)
             return self.number()
         elif (c.isalpha()):
             return self.identifier()
@@ -155,9 +157,5 @@ class Lexer:
         
 
 
-with open("example.c-", "r") as file:
-    read_ = file.read()
-l = Lexer(read_)
-l.tokenize()
-print(l)
+
 
