@@ -21,6 +21,10 @@ class CodeGenerator:
 
         self.code.append(line)
 
+    def generate_code(self):
+        self.globals()
+        self.generate_block(self.tree[self.current:])
+        return self.code
 
     def globals(self):
 
@@ -52,12 +56,12 @@ class CodeGenerator:
             self.emit(f"LW {result_register} {addr}")
             
         elif isinstance(node, Binary):
-            left_reg = self.generate_expr(node.left, None)
-            right_reg = self.generate_expr(node.right, None)
+            left_reg = self.generate_expr(node.left)
+            right_reg = self.generate_expr(node.right)
 
-            if node.operator == TokenType.PLUS:
+            if node.operator.type == TokenType.PLUS:
                 self.emit(f"ADD {result_register} {left_reg} {right_reg}")
-            elif node.operator == TokenType.MINUS:
+            elif node.operator.type == TokenType.MINUS:
                 self.emit(f"SUB {result_register} {left_reg} {right_reg}")
             else:
                 raise Exception("Invalid Operator")
@@ -73,17 +77,17 @@ class CodeGenerator:
         if_node:If = stmt
         self.current += 1
         condition:Binary = if_node.condition
-        reg_left = self.generate_binary(condition.left)
-        reg_right = self.generate_binary(condition.right)
+        reg_left = self.generate_binary(condition.left, None)
+        reg_right = self.generate_binary(condition.right, None)
 
         label_then = f"then_{self.current}"
         label_end = f"end_{self.current}"
 
-        if condition.operator == TokenType.LT:
+        if condition.operator.type == TokenType.LT:
             self.emit(f"BGE {label_then}")
-        elif condition.operator == TokenType.GT:
+        elif condition.operator.type == TokenType.GT:
             self.emit(f"BLT #4 {label_then}")
-        elif condition.operator == TokenType.EQEQ:
+        elif condition.operator.type == TokenType.EQEQ:
             self.emit(f"BEQ, #4 {label_then}")
         else:
             raise Exception("Unsupported operator")
@@ -100,7 +104,7 @@ class CodeGenerator:
         for stmt in statements:
 
             if isinstance(stmt, If):
-                self.generate_if(stmt)
+                self.generate_if(stmt, None)
             elif isinstance(stmt, ExprStmt):
                 self.generate_expr(stmt)
             elif (isinstance(stmt, VarDecl)):
@@ -108,16 +112,31 @@ class CodeGenerator:
     
     def generate_expr(self, stmt):
 
-        pass
+        if isinstance(stmt, Literal):
+            return self.generate_binary(stmt, None)
+        elif isinstance(stmt, Variable):
+            return self.generate_binary(stmt, None)
+        elif isinstance(stmt, Binary):
+            return self.generate_binary(stmt, None)
+        elif isinstance(stmt.expr, Assign):
+            self.generate_assign(stmt.expr)
+        else:
+            print(stmt)
+            raise Exception("Unsupported expression type")
 
-    def generate_var_decl(self, stmt:VarDecl):
+    def generate_assign(self, stmt:VarDecl):
 
         if stmt.name in self.global_variables or stmt.name in self.stack_variables:
-            reg_right = self.generate_binary(stmt.initializer)
+            reg_right = self.generate_binary(stmt.value, None)
             addr = self.get_var_address(stmt.name)
             self.emit(f"SW {addr} {reg_right}")
         else:
             raise Exception(f"Variable {stmt.name} not declared in scope.")
         
-    def generate_assign(self, stmt:Assign):
-        pass
+    def generate_var_decl(self, stmt:Assign):
+        
+        reg_right = self.generate_binary(stmt.initializer, None)
+	
+        self.emit(f"SW {reg_right} #" + str(self.stack_offset))
+        self.stack_offset += 4
+        self.stack_variables[stmt.name] = self.stack_offset - 4

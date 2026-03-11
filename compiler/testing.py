@@ -11,5 +11,9 @@ r = parser.Parser(p)
 t = r.parse()
 print(t)
 g = generator.CodeGenerator(t, 0, 100)
-g.globals()
-print(g.code)
+i =  g.generate_code()
+
+with open("output.asm", "w") as file:
+    file.write('\n'.join(i))
+
+
