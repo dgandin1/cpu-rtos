@@ -13,6 +13,7 @@ class TokenType(Enum):
     # Identifiers and numbers
     IDENT = auto()
     NUMBER = auto()
+    STRUCT = auto()
     
     # Operators
     PLUS = auto()
@@ -37,12 +38,18 @@ class TokenType(Enum):
     EOF = auto()
     ERROR = auto()
 
+    VOID = auto()
+    COMMA = auto()
+
 KEYWORDS = {
         "if": TokenType.IF,
         "while": TokenType.WHILE,
         "return": TokenType.RETURN,
         "else": TokenType.ELSE,
-        "int": TokenType.INT
+        "int": TokenType.INT,
+        "struct": TokenType.STRUCT,
+        "void": TokenType.VOID,
+        "return": TokenType.RETURN
     }
 
 class Token:
@@ -90,7 +97,8 @@ class Lexer:
         return Token(TokenType.NUMBER, value)
     
     def identifier(self):
-        while self.peek().isalnum():
+        # Need to check for `.` in case it is a struct declaration
+        while self.peek().isalnum() or self.peek() == "." or self.peek() == "_":
             self.advance()
         value_str = self.text[self.start:self.currentChar]
         type_ = KEYWORDS.get(value_str, TokenType.IDENT)
@@ -141,9 +149,15 @@ class Lexer:
                 self.advance()
                 return Token(TokenType.EQEQ)
             return Token(TokenType.ASSIGN)
+        elif (c == '!'):
+            if self.peek() == '=':
+                self.advance()
+                return Token(TokenType.NEQ)
         if c.isspace():
             self.start = self.currentChar
             return self.nextToken()
+        elif (c == ','):
+            return Token(TokenType.COMMA)
         return Token(TokenType.ERROR)
     
     # Tokenize the current text contained in the Lexer. Returns a list of Tokens.
@@ -152,7 +166,6 @@ class Lexer:
         tokens = []
         while self.currentChar < len(self.text):
             tokens.append(self.nextToken())
-        print(tokens)
         return tokens
         
 

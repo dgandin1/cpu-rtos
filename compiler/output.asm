@@ -1,20 +1,33 @@
-LW x0 #0
-SW x0 #100
-LW x1 204
-ADDI x12 x0 #2
-LW x1 x12
-ADDI x12 x0 #1
-LW x1 x12
-ADD x1 x1 x1
-BEQ, #4 then_2
-J end_2
-then_2:
-LW x1 204
-ADDI x12 x0 #1
-LW x1 x12
-ADD x1 x1 x1
-SW 204 x1
-ADDI x12 x0 #1
-LW x1 x12
-SW x1 #0
-end_2:
+ADDI x1 x0 100
+ADDI r2 r0 3
+SW r2 r0 20
+ADDI r2 r0 4
+SW r2 r0 21
+ADDI r2 r0 1
+SW r2 r0 22
+ADDI r30 r31 2
+BEQ x0 x0 13
+BEQ x0 x0 0
+ADDI r1 r1 -3
+SW r30 r1 0
+SW r3 r1 -1
+SW r4 r1 -2
+LW r4 r0 20
+ADDI r5 x0 1
+ADD r3 r4 r5
+SW r3 r0 20
+LW r30 r1 0
+ADDI r1 r1 3
+JMP r30
+ADDI r1 r1 -2
+SW r30 r1 0
+ADDI r3 x0 1
+SW r3 r1 -1
+LW r3 r1 -1
+LW r5 r0 20
+ADD r4 x0 r5
+ADDI r30 r31 2
+BEQ r0 r0 -19
+LW r30 r1 0
+ADDI r1 r1 2
+JMP r30

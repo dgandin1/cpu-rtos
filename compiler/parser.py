@@ -1,5 +1,5 @@
 #A simple recursive descent parser for a subset of C (C-).
-
+    
 from lexer import TokenType
 
 class Parser:
@@ -7,6 +7,7 @@ class Parser:
     def __init__(self, tokens):
         self.tokens = tokens
         self.current = 0
+        self.structs = []
 
     def previous(self):
 
@@ -15,6 +16,10 @@ class Parser:
     def peek(self):
 
         return self.tokens[self.current]
+
+    def peek2(self):
+
+        return self.tokens[self.current + 1]
 
     def consume(self):
         
@@ -46,7 +51,31 @@ class Parser:
         
         return If(condition, then_branch, else_branch)
     
-    def var_decl(self):
+    def func_decl(self, type_):
+
+        params = []
+
+        name_token = self.consume_and_check(TokenType.IDENT, "Expected function name").value
+        self.consume()
+
+        while not self.peek().type == TokenType.RPAREN:
+            param_type = self.consume()
+            param_name = self.consume_and_check(TokenType.IDENT, "Expected param name").value
+            params.append({"name":param_name, "type":param_type})
+
+            if self.peek().type == TokenType.COMMA:
+                self.consume()
+            
+        self.consume()
+        body = self.statement()
+        return Funct(name_token, type_, params, body)
+            
+
+    def var_decl(self, type_):
+
+        if self.peek2().type == TokenType.LPAREN:
+            return self.func_decl(type_)
+            
 
         name_token = self.consume_and_check(TokenType.IDENT, "Expected variable name")
         var_name = name_token.value
@@ -56,10 +85,11 @@ class Parser:
         if self.peek().type == TokenType.ASSIGN:
             self.consume()
             initializer = self.expression()
+        
 
         self.consume_and_check(TokenType.SEMI, "Expected semicolon")
 
-        return VarDecl(var_name, initializer)
+        return VarDecl(var_name, initializer, type_)
 
     def while_stmt(self):
 
@@ -68,8 +98,25 @@ class Parser:
         self.consume_and_check(TokenType.RPAREN, "Expected RPARAN")
         body = self.statement()
         return While(condition, body)
+    
+    def funct_call(self):
+        
+        params = []
+        name = self.consume()
+        self.consume() # (
+        while not self.peek().type == TokenType.RPAREN:
+           # name = self.consume_and_check(TokenType.IDENT, "expeted parameter to be an identifier")
+            params.append(self.expression())
+            if (self.peek().type == TokenType.COMMA):
+                self.consume()
+        self.consume() #)
+        return FunctCall(name, params)
+        
 
     def expression(self):
+        
+        if self.peek2().type == TokenType.LPAREN:
+            return self.funct_call()
 
         return self.assignment()
 
@@ -77,6 +124,30 @@ class Parser:
         expr = self.expression()
         self.consume_and_check(TokenType.SEMI, "Expected semicolon")
         return ExprStmt(expr)
+
+    def struct_stmt(self): 
+
+        definitions = [] 
+        
+        name = self.consume_and_check(TokenType.IDENT, "Expected Struct Identifier")
+        self.structs.append(name.value)
+        if not self.peek().type == TokenType.LBRACE:
+            var_name = self.consume()
+            print(var_name)
+            self.consume_and_check(TokenType.SEMI, "Expected semicolon")
+            return VarDecl(var_name, None, name)
+
+        self.consume_and_check(TokenType.LBRACE, "Expected LBRACE")
+
+        while self.peek().type == TokenType.INT:
+
+            self.consume()
+            var_name = self.consume_and_check(TokenType.IDENT, "Expected identifier")
+            definitions.append({"name":var_name.value, "type":TokenType.INT})
+            self.consume_and_check(TokenType.SEMI, "Expected semicolon")
+        
+        self.consume_and_check(TokenType.RBRACE, "Expected RPAREN")
+        return Struct(name.value, definitions)
 
     def statement(self):
 
@@ -91,7 +162,25 @@ class Parser:
             return self.block()
         elif self.peek().type == TokenType.INT:
             self.consume()
-            return self.var_decl()
+            return self.var_decl(TokenType.INT)
+        elif self.peek().type == TokenType.VOID:
+            self.consume()
+            return self.var_decl(TokenType.VOID)
+        elif self.peek().type == TokenType.STRUCT:
+            self.consume()
+            return self.struct_stmt()
+        elif self.peek().type == TokenType.RETURN:
+            self.consume()
+            expr = self.expr_stmt()
+            return ReturnStmt(expr)
+        # elif self.peek().value in self.structs:
+        #     # deal with struct
+        #     s_name = self.consume()
+        #     name = self.consume()
+        #     equals = self.consume()
+        #     value = self.consume()
+        #     self.consume_and_check(TokenType.SEMI, "expected semicolon")
+        #     return VarDecl(name.value, Literal(value.value), s_name.value)
         return self.expr_stmt()
     
     def block(self):
@@ -104,8 +193,8 @@ class Parser:
     
     
     def assignment(self):
+        
         expr = self.equality()
-
         if self.peek().type == TokenType.ASSIGN:
             equals = self.consume()
             value = self.assignment()
@@ -120,7 +209,7 @@ class Parser:
     def equality(self):
         expr = self.comparison()
 
-        while self.peek().type == TokenType.EQEQ:
+        while self.peek().type == TokenType.EQEQ or self.peek().type == TokenType.NEQ:
             operator = self.consume()
             right = self.comparison()
             expr = Binary(expr, operator, right)
@@ -206,6 +295,14 @@ class Node:
 
 # === Statements ===
 
+class Funct(Node):
+    def __init__(self, name, return_type, params, body):
+
+        self.name = name
+        self.return_type = return_type
+        self.params = params
+        self.body = body
+
 class Block(Node):
     def __init__(self, statements):
         self.statements = statements
@@ -260,6 +357,22 @@ class Variable(Node):
         self.name = name
 
 class VarDecl(Node):
-    def __init__(self, name, initializer):
+    def __init__(self, name, initializer, type_):
         self.name = name
         self.initializer = initializer
+        self.type = type_
+
+class Struct(Node):
+    def __init__(self, name, declerations): 
+        self.name = name
+        self.declerations = declerations
+
+class FunctCall(Node):
+    def __init__(self, name, params):
+        self.name = name
+        self.params = params
+
+class ReturnStmt(Node):
+    def __init__(self, expr):
+        self.expr = expr
+        

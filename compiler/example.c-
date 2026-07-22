@@ -1,7 +1,20 @@
-int i = 0;
-if (i == 2 + 1) {
-    i = i + 1;
-    int i = 1;
+int base = 3;
+int height = 4;
+int count = 1;
+
+void hello(int hi, int hi2) {
+    base = base + 1;
 }
+
+int main() {
+    int param = 1;
+    hello(param, base);
+    return seventeen;
+}
+
+
+
+
+
 
 
