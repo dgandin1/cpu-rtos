@@ -1,0 +1,65 @@
+void printlcd(int val) {
+    __asm__("ADDI r11 r0 1");
+    __asm__("SW r3 r11 0");
+    __asm__("ADD r12 r0 r3");
+}
+
+void on_pixel_OLD(int x, int y) {
+    __asm__("ADD r24 r3 r0");
+    mul(y, 64);
+    __asm__("ADDI r6 r24 101");
+    __asm__("ADD r6 r6 r29");
+    __asm__("LW r7 r6 0");
+    __asm__("ADDI r1 r0 1");
+    __asm__("OR r7 r1 r7");
+    __asm__("SW r7 r6 0");
+}
+
+void on_pixel(int x, int y) {
+
+    __asm__("ADDI r20 r0 31");
+    __asm__("AND r20 r20 r3");
+    __asm__("SLL r21 r4 1");
+
+    __asm__("SRL r7 r3 1");
+    __asm__("SRL r7 r7 1");
+    __asm__("SRL r7 r7 1");
+    __asm__("SRL r7 r7 1");
+    __asm__("SRL r7 r7 1");
+
+    __asm__("ADD r21 r7 r21");
+    __asm__("ADDI r21 r21 101");
+
+    __asm__("LW r22 r21 0");
+    __asm__("ADDI r23 r0 1");
+    
+    __asm__("BEQ r20 r0 4");
+    __asm__("SLL r23 r23 1");
+    __asm__("ADDI r20 r20 -1");
+    __asm__("BEQ r0 r0 -3");
+
+    __asm__("OR r24 r23 r22");
+
+    __asm__("SW r24 r21 0");
+
+
+}
+
+void off_pixel(int x, int y) {
+    mul(y, 64);
+    __asm__("ADDI r6 r3 101");
+    __asm__("ADD r6 r6 r29");
+    __asm__("LW r7 r6 -31");
+    __asm__("ADDI r1 r0 -1");
+    __asm__("SLL r1 r1 1");
+    __asm__("AND r7 r7 r1");
+    __asm__("SW r7 r6 -31");
+}
+
+int get_mcause() {
+    __asm__("ADD r29 r26 r0");
+}
+
+void print(int vals) {
+    __asm__("SW r3 r0 1");
+}

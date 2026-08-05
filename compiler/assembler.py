@@ -42,9 +42,9 @@ def assemble(output_file, lines):
         elif line[0] == "sub":
             line_o = "0100000" + rtb(line[3]) + rtb(line[2]) + "000" + rtb(line[1]) + "0110011"
         elif line[0] == "sll": # Added your 1-bit software shift!
-            line_o = "0000000" + rtb(line[3]) + rtb(line[2]) + "001" + rtb(line[1]) + "0110011"
+            line_o = "0000000" + "000" + rtb(line[2]) + "001" + rtb(line[1]) + "0110011"
         elif line[0] == "srl": 
-            line_o = "0000000" + rtb(line[3]) + rtb(line[2]) + "101" + rtb(line[1]) + "0110011"
+            line_o = "0000000" + "000" + rtb(line[2]) + "101" + rtb(line[1]) + "0110011"
         elif line[0] == "or":
             line_o = "0000000" + rtb(line[3]) + rtb(line[2]) + "110" + rtb(line[1]) + "0110011"
         elif line[0] == "and":
@@ -88,14 +88,16 @@ def assemble(output_file, lines):
             sa_str = rtb(line[1])
             sb_str = "00000"
             line_o = imm_str + sa_str + "011" + sb_str + "0100111"
+        
+        elif line[0] == "mret":
+
+            line_o = "00000000000000000000000001110011"
 
         hex_string = f"{int(line_o, 2):08x}"
         output.append(hex_string.upper() + "\n")
 
     with open(output_file, "w") as f:
         f.writelines(output)
-
-    print(f"Compiled machine code to {output_name}.mem successfully!")
 
     
     

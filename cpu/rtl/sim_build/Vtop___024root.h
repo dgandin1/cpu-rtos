@@ -18,8 +18,10 @@ class alignas(VL_CACHE_LINE_BYTES) Vtop___024root final {
     struct {
         VL_IN8(CLK,0,0);
         VL_IN8(RESET,0,0);
+        VL_IN8(IRQ_in,3,0);
         CData/*0:0*/ cpu__DOT__CLK;
         CData/*0:0*/ cpu__DOT__RESET;
+        CData/*3:0*/ cpu__DOT__IRQ_in;
         CData/*4:0*/ cpu__DOT__SA;
         CData/*4:0*/ cpu__DOT__SB;
         CData/*0:0*/ cpu__DOT__LD;
@@ -32,6 +34,11 @@ class alignas(VL_CACHE_LINE_BYTES) Vtop___024root final {
         CData/*0:0*/ cpu__DOT__V;
         CData/*0:0*/ cpu__DOT__N;
         CData/*0:0*/ cpu__DOT__Z;
+        CData/*0:0*/ cpu__DOT__MIE;
+        CData/*0:0*/ cpu__DOT__is_mret;
+        CData/*3:0*/ cpu__DOT__irq_pending;
+        CData/*1:0*/ cpu__DOT__irq_id;
+        CData/*1:0*/ cpu__DOT__MCAUSE;
         CData/*0:0*/ cpu__DOT__is_branch;
         CData/*0:0*/ cpu__DOT__branch_taken;
         CData/*2:0*/ cpu__DOT__main__DOT__FS;
@@ -73,6 +80,8 @@ class alignas(VL_CACHE_LINE_BYTES) Vtop___024root final {
         CData/*4:0*/ cpu__DOT__register__DOT__SB;
         CData/*0:0*/ cpu__DOT__register__DOT__LD;
         CData/*4:0*/ cpu__DOT__register__DOT__DR;
+    };
+    struct {
         CData/*4:0*/ cpu__DOT__decode__DOT__DR;
         CData/*4:0*/ cpu__DOT__decode__DOT__SA;
         CData/*4:0*/ cpu__DOT__decode__DOT__SB;
@@ -80,13 +89,13 @@ class alignas(VL_CACHE_LINE_BYTES) Vtop___024root final {
         CData/*0:0*/ cpu__DOT__decode__DOT__MD;
         CData/*0:0*/ cpu__DOT__decode__DOT__MW;
         CData/*0:0*/ cpu__DOT__decode__DOT__LD;
-    };
-    struct {
         CData/*2:0*/ cpu__DOT__decode__DOT__FS;
         CData/*0:0*/ __VstlFirstIteration;
         CData/*0:0*/ __VstlPhaseResult;
         CData/*0:0*/ __VicoFirstIteration;
         CData/*0:0*/ __VicoPhaseResult;
+        CData/*0:0*/ __Vtrigprevexpr___TOP__cpu__DOT__CLK__0;
+        CData/*0:0*/ __Vtrigprevexpr___TOP__cpu__DOT__RESET__0;
         CData/*0:0*/ __Vtrigprevexpr___TOP__cpu__DOT__data_memory__DOT__CLK__0;
         CData/*0:0*/ __Vtrigprevexpr___TOP__cpu__DOT__program_counter__DOT__CLK__0;
         CData/*0:0*/ __Vtrigprevexpr___TOP__cpu__DOT__program_counter__DOT__RESET__0;
@@ -106,6 +115,8 @@ class alignas(VL_CACHE_LINE_BYTES) Vtop___024root final {
         IData/*31:0*/ cpu__DOT__Alu_Output;
         IData/*31:0*/ cpu__DOT__alu_in_b;
         IData/*31:0*/ cpu__DOT__dram_data_out;
+        IData/*31:0*/ cpu__DOT__MEPC;
+        IData/*31:0*/ cpu__DOT__pc_standard_next;
         IData/*31:0*/ cpu__DOT__pc_plus_1;
         IData/*31:0*/ cpu__DOT__pc_branch_target;
         IData/*31:0*/ cpu__DOT__main__DOT__A;
@@ -135,11 +146,13 @@ class alignas(VL_CACHE_LINE_BYTES) Vtop___024root final {
         IData/*31:0*/ cpu__DOT__register__DOT__DataA;
         IData/*31:0*/ cpu__DOT__register__DOT__DataB;
         IData/*31:0*/ cpu__DOT__register__DOT__i;
+    };
+    struct {
         IData/*31:0*/ cpu__DOT__decode__DOT__INST;
         IData/*31:0*/ __VactIterCount;
         QData/*32:0*/ cpu__DOT__main__DOT__add__DOT__sum_ext;
-        VlUnpacked<IData/*31:0*/, 129> cpu__DOT__data_memory__DOT__mem;
-        VlUnpacked<IData/*31:0*/, 64> cpu__DOT__instruction_memory__DOT__mem;
+        VlUnpacked<IData/*31:0*/, 5056> cpu__DOT__data_memory__DOT__mem;
+        VlUnpacked<IData/*31:0*/, 256> cpu__DOT__instruction_memory__DOT__mem;
         VlUnpacked<IData/*31:0*/, 32> cpu__DOT__register__DOT__storage;
         VlUnpacked<QData/*63:0*/, 1> __VstlTriggered;
         VlUnpacked<QData/*63:0*/, 1> __VicoTriggered;
@@ -173,6 +186,7 @@ class alignas(VL_CACHE_LINE_BYTES) Vtop___024root final {
     static constexpr CData/*2:0*/ cpu__DOT__decode__DOT__FS_OR = 6U;
     static constexpr CData/*2:0*/ cpu__DOT__decode__DOT__FS_XOR = 7U;
     static constexpr SData/*11:0*/ cpu__DOT__decode__DOT__IMM_DC = 0U;
+    static constexpr IData/*31:0*/ cpu__DOT__MTVEC = 4U;
 
     // CONSTRUCTORS
     Vtop___024root(Vtop__Syms* symsp, const char* namep);

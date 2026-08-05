@@ -133,7 +133,6 @@ class Parser:
         self.structs.append(name.value)
         if not self.peek().type == TokenType.LBRACE:
             var_name = self.consume()
-            print(var_name)
             self.consume_and_check(TokenType.SEMI, "Expected semicolon")
             return VarDecl(var_name, None, name)
 
@@ -260,6 +259,7 @@ class Parser:
         return self.primary()
     
     def primary(self):
+        
         if self.peek().type == TokenType.NUMBER:
             token = self.consume()
             return Literal(token.value)
@@ -273,6 +273,17 @@ class Parser:
             expr = self.expression()
             self.consume_and_check(TokenType.RPAREN, "Expected RPAREN")
             return expr
+        if self.peek().type == TokenType.D_QUOTE:
+            self.consume()
+            literal_string = ""
+            while self.peek().type == TokenType.IDENT or self.peek().type == TokenType.NUMBER or self.peek().type == TokenType.MINUS:
+                if (self.peek().type == TokenType.MINUS):
+                    self.consume()
+                    literal_string += "-"
+                else:
+                    literal_string += str(self.consume().value) + " "
+            self.consume_and_check(TokenType.D_QUOTE, "Need closing quotation")
+            return Literal(literal_string[:-1])
 
         raise Exception("Expected expression.")
     

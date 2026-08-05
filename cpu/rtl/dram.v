@@ -6,7 +6,7 @@ module dram (
     output [31:0] DATA_OUT     // Data sent back to Register File via MD mux
 );
 
-    reg [31:0] mem [0:128];     // 64 words of data memory
+    reg [31:0] mem [0:5055];     // 64 words of data memory
 
     // Asynchronous Read
     assign DATA_OUT = mem[ADDR];

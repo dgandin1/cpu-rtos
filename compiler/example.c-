@@ -1,20 +1,18 @@
-int base = 3;
-int height = 4;
-int count = 1;
-
-void hello(int hi, int hi2) {
-    base = base + 1;
-}
-
 int main() {
-    int param = 1;
-    hello(param, base);
-    return seventeen;
+    
+    print(8);
+    on_pixel(32, 32);
+    on_pixel(2, 2);
+    int j = mul(123, 234);
+    print(j);
+
 }
 
+void IRQ_handler() {
 
-
-
-
-
+    int i = get_mcause();
+    print(i);
+    
+    on_pixel(1, 1);
+}
 

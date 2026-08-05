@@ -1,6 +1,0 @@
-<testsuites name="results">
-  <testsuite name="all" package="all">
-    <property name="random_seed" value="1784668979" />
-    <testcase name="test_cpu_hex_file_execution" classname="test_main" file="/home/duke/dev/cpu-rtos/cpu/tb/test_main.py" lineno="6" time="0.61602783203125" sim_time_ns="300020.0" ratio_time="487023.4499157832" />
-  </testsuite>
-</testsuites>

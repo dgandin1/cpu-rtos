@@ -1,0 +1,53 @@
+
+int mul(int a, int b) {
+
+
+    __asm__("ADDI r29 r0 0");
+    __asm__("ADDI r2 r0 1");
+    __asm__("BEQ r4 r0 7");
+    __asm__("AND r5 r4 r2");
+    __asm__("BEQ r5 r0 2");
+    __asm__("ADD r29 r29 r3");
+    __asm__("SLL r3 r3 0");
+    __asm__("SRL r4 r4 0");
+    __asm__("BEQ r0 r0 -6");
+
+
+}
+
+int lshift(int value, int amount) {
+    __asm__("ADD r29 r3 r0");
+    __asm__("BEQ r4 r0 4");
+    __asm__("SLL r29 r29 0");
+    __asm__("ADDI r4 r4 -1");
+    __asm__("BEQ r0 r0 -3");
+}
+
+int rshift(int value, int amount) {
+    __asm__("ADD r29 r3 r0");
+    __asm__("BEQ r4 r0 4");
+    __asm__("SRL r29 r29 0");
+    __asm__("ADDI r4 r4 -1");
+    __asm__("BEQ r0 r0 -3");
+}
+
+int abs(int value) {
+    __asm__("ADD r29 r3 r0");
+    __asm__("BLT r29 r0 2");
+    __asm__("BEQ r0 r0 2");
+    __asm__("SUB r29 r0 r29");
+}
+
+int min(int a, int b) {
+    __asm__("BLT r3 r4 2");
+    __asm__("ADD r29 r4 r0");
+    __asm__("BEQ r0 r0 2");
+    __asm__("ADD r29 r3 r0");
+}
+
+int max(int a, int b) {
+    __asm__("BLT r3 r4 2");
+    __asm__("ADD r29 r3 r0");
+    __asm__("BEQ r0 r0 2");
+    __asm__("ADD r29 r4 r0");
+}

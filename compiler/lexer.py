@@ -40,6 +40,8 @@ class TokenType(Enum):
 
     VOID = auto()
     COMMA = auto()
+    D_QUOTE = auto()
+    S_QUOTE = auto()
 
 KEYWORDS = {
         "if": TokenType.IF,
@@ -114,7 +116,7 @@ class Lexer:
             return Token(TokenType.EOF)
         elif (c.isdigit()):
             return self.number()
-        elif (c.isalpha()):
+        elif (c.isalpha() or c == '_'):
             return self.identifier()
         elif (c == '+'):
             return Token(TokenType.PLUS)
@@ -158,6 +160,10 @@ class Lexer:
             return self.nextToken()
         elif (c == ','):
             return Token(TokenType.COMMA)
+        elif (c == "\""):
+            return Token(TokenType.D_QUOTE)
+        elif (c == "\'"):
+            return Token(TokenType.S_QUOTE)
         return Token(TokenType.ERROR)
     
     # Tokenize the current text contained in the Lexer. Returns a list of Tokens.

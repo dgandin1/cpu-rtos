@@ -107,10 +107,20 @@ class CodeGeneratorSimplified:
         # Jump directly to main function
         self.emit("ADDI r30 r31 2")  # Load return address
         self.emit("BEQ x0 x0 main")        # Call main
-        
+
         # Infinite loop / Halt program when main returns
         self.emit("halt_loop:")
         self.emit("BEQ x0 x0 halt_loop")
+
+        # check if ISQ_handler() exists, if so, emit it
+        for func in functions:
+            if func.name == "IRQ_handler":
+                #NOP to align properly
+                self.generate_funct(func)
+                functions.remove(func)
+                break
+        
+        
 
         # Emit all functions first so they sit in memory independently
         for func in functions:
@@ -166,10 +176,17 @@ class CodeGeneratorSimplified:
         #restore PC
         self.emit(f"LW r30 r1 0")
         self.emit(f"ADDI r1 r1 {frame_size}")
-        self.emit(f"JMP r30")
+
+        if stmt.name == "IRQ_handler":
+            self.emit("MRET")
+        else:
+            self.emit(f"JMP r30")
         self.scopes.pop()
 
     def generate_funct_call(self, stmt):
+        if stmt.expr.name.value == "__asm__":
+            self.emit(stmt.expr.params[0].value)
+            return
 
         #evaluate arguments and put into registers
         for i, arg in enumerate(stmt.expr.params):
@@ -188,7 +205,7 @@ class CodeGeneratorSimplified:
     
     def generate_return(self, stmt):
 
-        reg_val = self.generate_expr(stmt.expr)
+        reg_val = self.generate_expr(stmt.expr.expr)
 
         if reg_val != "r29":
 
@@ -206,7 +223,7 @@ class CodeGeneratorSimplified:
         for stmt in statements:
 
             if isinstance(stmt, If):
-                self.generate_if(stmt, None)
+                self.generate_if(stmt)
             elif isinstance(stmt, ExprStmt):
                 self.generate_expr(stmt)
             elif (isinstance(stmt, VarDecl)):
@@ -260,6 +277,10 @@ class CodeGeneratorSimplified:
         if isinstance(node, Literal):
             result_register = self.next_reg()
             self.emit(f"ADDI {result_register} x0 {node.value}")
+
+        elif isinstance(node, FunctCall):
+
+            return self.generate_funct_call(ExprStmt(expr=node))
             
             
         elif isinstance(node, Variable):
@@ -295,6 +316,7 @@ class CodeGeneratorSimplified:
             self.free_reg(right_reg)
             
         else:
+            
             raise Exception("Unsupported Expression Type") 
         
         return result_register
