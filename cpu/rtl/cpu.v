@@ -1,8 +1,10 @@
-module cpu(CLK, RESET, IRQ_in);
+module cpu(CLK, RESET, key_irq);
 
     input CLK;
     input RESET;
-    input [3:0] IRQ_in; // address of current interrupt (zero if no interrupt)
+    wire [3:0] IRQ_in; // address of current interrupt (zero if no interrupt)
+    input key_irq;
+    assign IRQ_in[1] = key_irq;
     wire [31:0] Iin;  // Instruction in
 
     wire [4:0] SA;
@@ -10,7 +12,7 @@ module cpu(CLK, RESET, IRQ_in);
     wire LD;
     wire [4:0] DR;
     wire [11:0] IMM;
-    wire [2:0] FS;    
+    wire [2:0] FS;     
     
     wire MB;
     wire MD;
@@ -162,6 +164,15 @@ module cpu(CLK, RESET, IRQ_in);
     assign pc_standard_next = (branch_taken) ? pc_branch_target : pc_plus_1;
 
     assign PC_next = (~(irq_pending == 4'd0) && MIE) ? MTVEC : (is_mret) ? MEPC : pc_standard_next;
+
+    pit timer(
+        .CLK(CLK),
+        .RESET(RESET),
+        .ADDR(Alu_Output),
+        .DATA_IN(DataB),
+        .MW(MW),
+        .OUT(IRQ_in[3])
+    );
 
 
 endmodule

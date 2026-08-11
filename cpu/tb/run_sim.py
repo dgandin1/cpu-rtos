@@ -33,9 +33,9 @@ async def display_driver(dut):
                 return
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
-                    dut.IRQ_in.value = 1  # or 1000 if it's a wide bus
+                    dut.key_irq.value = 1  # or 1000 if it's a wide bus
                     await Timer(10, unit="ns")
-                    dut.IRQ_in.value = 0
+                    dut.key_irq.value = 0
 
         for y in range(SCREEN_HEIGHT):
             for x in range(SCREEN_WIDTH):
@@ -91,7 +91,8 @@ if __name__ == "__main__":
             proj_dir / "iram.v",
             proj_dir / "dram.v",
             proj_dir / "regfile.v",
-            proj_dir / "cpu.v"  
+            proj_dir / "cpu.v",
+            proj_dir / "pit.v"
         ]
 
     runner = get_runner(sim)

@@ -5,6 +5,7 @@ int main() {
     on_pixel(2, 2);
     int j = mul(123, 234);
     print(j);
+    pit_ldvalue(__long__(1000000));
 
 }
 

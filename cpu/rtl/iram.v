@@ -5,7 +5,7 @@ module iram(
 
 
 
-    reg [31:0] mem [0:255];
+    reg [31:0] mem [0:1024];
 
     assign INSTRUCTION = mem[FETCH_ADDR];
 

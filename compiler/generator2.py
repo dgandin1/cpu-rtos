@@ -1,4 +1,4 @@
-from parser import Node, VarDecl, If, Binary, Literal, Variable, ExprStmt, Assign, Block, While, Struct, Funct, FunctCall, ReturnStmt
+from parser import Node, VarDecl, If, Binary, Literal, Variable, ExprStmt, Assign, Block, While, Struct, Funct, FunctCall, ReturnStmt, Unary
 from lexer import TokenType
 
 
@@ -6,7 +6,8 @@ from lexer import TokenType
 # SP - R1
 # PC - R31
 # Return Address - R30
-
+# Return value - r29
+# interrupt status register - r26
 
 class Symbol_Table:
 
@@ -58,10 +59,17 @@ class CodeGeneratorSimplified:
         self.free_registers = []
 
         self.current_frame_size = 0
+
+        self.label_counter = 0
     
     def emit(self, line):
 
         self.code.append(line)
+
+    def new_label(self, prefix):
+        label = f"{prefix}_{self.label_counter}"
+        self.label_counter += 1
+        return label
     
     def free_reg(self, reg):
 
@@ -99,6 +107,20 @@ class CodeGeneratorSimplified:
             else:
                 global_statements.append(stmt)
 
+        # check if ISQ_handler() exists, if so, emit it
+        irq_exists = False
+        for func in functions:
+            if func.name == "IRQ_handler":
+                irq_exists = True
+                break
+
+        #If IRQ handler exists do, position jump to it correctly 
+        if irq_exists:
+            self.emit("BEQ x0 x0 4")
+            self.emit("ADD x0 x0 x0")
+            self.emit("ADD x0 x0 x0")
+            self.emit("BEQ x0 x0 IRQ_handler")
+
         # --- STEP 3: GENERATE GLOBAL SCOPE & FUNCTIONS ---
         globals_scope = Symbol_Table(None)
         self.scopes.append(globals_scope)
@@ -111,16 +133,6 @@ class CodeGeneratorSimplified:
         # Infinite loop / Halt program when main returns
         self.emit("halt_loop:")
         self.emit("BEQ x0 x0 halt_loop")
-
-        # check if ISQ_handler() exists, if so, emit it
-        for func in functions:
-            if func.name == "IRQ_handler":
-                #NOP to align properly
-                self.generate_funct(func)
-                functions.remove(func)
-                break
-        
-        
 
         # Emit all functions first so they sit in memory independently
         for func in functions:
@@ -187,6 +199,19 @@ class CodeGeneratorSimplified:
         if stmt.expr.name.value == "__asm__":
             self.emit(stmt.expr.params[0].value)
             return
+        elif stmt.expr.name.value == "__long__":
+            tmp_reg = self.next_reg()
+            val = stmt.expr.params[0].value
+            if val == 0:
+                self.emit(f"ADD {tmp_reg}, r0, r0")
+                return tmp_reg
+            bits = bin(val)[2:]  # cut off first two characters in python binary string representation
+            self.emit(f"ADDI {tmp_reg} r0 1")
+            for bit in bits[1:]:
+                self.emit(f"SLL {tmp_reg} {tmp_reg} 1")
+                if bit == "1":
+                    self.emit(f"ADDI {tmp_reg} {tmp_reg} 1")
+            return tmp_reg
 
         #evaluate arguments and put into registers
         for i, arg in enumerate(stmt.expr.params):
@@ -243,8 +268,8 @@ class CodeGeneratorSimplified:
         reg_right = self.generate_binary(condition.right)
 
 
-        label_then = f"then_{self.current_line}"
-        label_end = f"end_{self.current_line}"
+        label_then = self.new_label("if_then")
+        label_end = self.new_label("if_end")
 
         if condition.operator.type == TokenType.LT:
             self.emit(f"BLT {reg_left} {reg_right} {label_then}")
@@ -321,6 +346,20 @@ class CodeGeneratorSimplified:
         
         return result_register
 
+    def generate_unary(self, node):
+
+        operand_reg = self.generate_expr(node.operand)
+        result_register = self.next_reg()
+
+        if node.operator.type == TokenType.MINUS:
+            self.emit(f"SUB {result_register} x0 {operand_reg}")
+        else:
+            raise Exception("Unsupported unary operator")
+
+        self.free_reg(operand_reg)
+
+        return result_register
+
     def generate_expr(self, stmt):
         if isinstance(stmt, Literal):
             return self.generate_binary(stmt)
@@ -328,9 +367,12 @@ class CodeGeneratorSimplified:
             return self.generate_binary(stmt)
         elif isinstance(stmt, Binary):
             return self.generate_binary(stmt)
+        elif isinstance(stmt, Unary):
+            return self.generate_unary(stmt)
         elif isinstance(stmt.expr, Assign):
             self.generate_assign(stmt.expr)
         elif isinstance(stmt.expr, FunctCall):
+        
             return self.generate_funct_call(stmt)
         else:
             print(stmt)
@@ -364,8 +406,8 @@ class CodeGeneratorSimplified:
         
         condition = stmt.condition
 
-        label_start = f"start_{self.current_line}"
-        label_end = f"end_{self.current_line}"
+        label_start = self.new_label("start")
+        label_end = self.new_label("end")
 
         self.emit(f"{label_start}:")
 

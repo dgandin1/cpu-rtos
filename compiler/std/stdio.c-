@@ -45,15 +45,8 @@ void on_pixel(int x, int y) {
 
 }
 
-void off_pixel(int x, int y) {
-    mul(y, 64);
-    __asm__("ADDI r6 r3 101");
-    __asm__("ADD r6 r6 r29");
-    __asm__("LW r7 r6 -31");
-    __asm__("ADDI r1 r0 -1");
-    __asm__("SLL r1 r1 1");
-    __asm__("AND r7 r7 r1");
-    __asm__("SW r7 r6 -31");
+void clear_screen() {
+    
 }
 
 int get_mcause() {
@@ -62,4 +55,9 @@ int get_mcause() {
 
 void print(int vals) {
     __asm__("SW r3 r0 1");
+}
+
+void pit_ldvalue(int val) {
+    __asm__("ADDI r17 r0 4090");
+    __asm__("SW r3 r17 0");
 }

@@ -30,7 +30,7 @@ To compile program, cd into the compiler directory and use the g--.py utility:
 ```
 python g--.py -o program.hex source1.c- 
 ```
-Copy generated binary into `tb/sim_build/program.hex`. Run the following command from within the tb directory to launch the graphical simulation:
+Copy generated binary into `cpu/rtl/sim_build/program.hex`. Run the following command from within the tb directory to launch the graphical simulation:
 ```
 python run_sim.py
 ```
@@ -42,6 +42,8 @@ C- is a subset of C that supports a limited number of features that make it poss
 * `if`, `else`, and `while` statements
 * `structs`
 * Functions of return type `int` and `void`
+* Arrays
+* Pointers
 
 More features are planned to be added in the future. See documentation for a more comprehensive overview of current features.
 

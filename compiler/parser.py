@@ -106,7 +106,11 @@ class Parser:
         self.consume() # (
         while not self.peek().type == TokenType.RPAREN:
            # name = self.consume_and_check(TokenType.IDENT, "expeted parameter to be an identifier")
-            params.append(self.expression())
+           #func calls are not wrapped in expression statement because of a quirk of the parser
+            expr = self.expression()
+            if isinstance(expr, FunctCall):
+                expr = ExprStmt(expr)
+            params.append(expr)
             if (self.peek().type == TokenType.COMMA):
                 self.consume()
         self.consume() #)
@@ -192,7 +196,7 @@ class Parser:
     
     
     def assignment(self):
-        
+
         expr = self.equality()
         if self.peek().type == TokenType.ASSIGN:
             equals = self.consume()
@@ -265,6 +269,10 @@ class Parser:
             return Literal(token.value)
 
         if self.peek().type == TokenType.IDENT:
+
+            # function call: identifier followed by (
+            if self.peek2().type == TokenType.LPAREN:
+                return ExprStmt(self.funct_call())
             token = self.consume()
             return Variable(token.value)
 
