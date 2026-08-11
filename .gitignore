@@ -4,3 +4,4 @@ cpu/.venv/
 cpu/rtl/sim_build/
 __pycache__/
 compiler/examples/
+comiler/__pycache__/
