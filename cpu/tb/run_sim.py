@@ -17,6 +17,9 @@ async def display_driver(dut):
     screen = pygame.display.set_mode((SCREEN_WIDTH * PIXEL_SCALE, SCREEN_HEIGHT * PIXEL_SCALE))
     pygame.display.set_caption("CPU Output Framebuffer")
 
+    # 1. Create native 64x64 offscreen buffer
+    buffer_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+
     while True:
 
         await Timer(100, unit="us")
@@ -32,28 +35,33 @@ async def display_driver(dut):
                 pygame.quit()
                 return
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    dut.key_irq.value = 1  # or 1000 if it's a wide bus
+                if event.key == pygame.K_w:
+                    dut.key_w.value = 1
                     await Timer(10, unit="ns")
-                    dut.key_irq.value = 0
+                    dut.key_w.value = 0
+                if event.key == pygame.K_s:
+                    dut.key_s.value = 1
+                    await Timer(10, unit="ns")
+                    dut.key_s.value = 0
+
+        # 2. Attach PixelArray to offscreen buffer_surface instead of screen
+        px_array = pygame.PixelArray(buffer_surface)
+        words_per_row = SCREEN_WIDTH // 32
 
         for y in range(SCREEN_HEIGHT):
-            for x in range(SCREEN_WIDTH):
-                # 1. Calculate which word holds pixel (x, y)
-                word_x = x // 32
-                words_per_row = SCREEN_WIDTH // 32 # 64 // 32 = 2
-                addr = BUFFER_BASE_ADDR + (y * words_per_row) + word_x
+            row_addr = BUFFER_BASE_ADDR + (y * words_per_row)
+            w0 = int(dut.data_memory.mem[row_addr].value)
+            w1 = int(dut.data_memory.mem[row_addr + 1].value)
 
-                # 2. Extract the specific bit (x % 32)
-                bit_index = x % 32
-                word_val = int(dut.data_memory.mem[addr].value)
-                pixel_is_on = (word_val >> bit_index) & 1
+            for x in range(32):
+                px_array[x, y] = (255, 255, 255) if ((w0 >> x) & 1) else (0, 0, 0)
+                px_array[x + 32, y] = (255, 255, 255) if ((w1 >> x) & 1) else (0, 0, 0)
 
-                # 3. Choose color based on bit state
-                color = (255, 255, 255) if pixel_is_on else (0, 0, 0)
+        del px_array  # Unlock surface
 
-                rect = (x * PIXEL_SCALE, y * PIXEL_SCALE, PIXEL_SCALE, PIXEL_SCALE)
-                pygame.draw.rect(screen, color, rect)
+        # 3. Scale native 64x64 surface to match full display resolution
+        scaled = pygame.transform.scale(buffer_surface, (SCREEN_WIDTH * PIXEL_SCALE, SCREEN_HEIGHT * PIXEL_SCALE))
+        screen.blit(scaled, (0, 0))
 
         pygame.display.flip()
 
@@ -100,15 +108,15 @@ if __name__ == "__main__":
             sources=sources,
             hdl_toplevel="cpu",               
             build_dir=proj_dir / "sim_build",  
-            waves=True,                        
-            build_args=["--trace", "-Wall"]   
+            waves=False,                        
+            build_args=["-Wall", "-O3", "-CFLAGS", "-O3 -march=native", "--x-assign", "fast", "--x-initial", "fast"]   
         )
 
     runner.test(
             hdl_toplevel="cpu",
             test_module="run_sim",            
             testcase="run_cpu_with_screen", 
-            waves=True
+            waves=False
         )
 
 

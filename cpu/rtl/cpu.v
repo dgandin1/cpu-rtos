@@ -1,10 +1,13 @@
-module cpu(CLK, RESET, key_irq);
+module cpu(CLK, RESET, key_w, key_s);
 
     input CLK;
     input RESET;
     wire [3:0] IRQ_in; // address of current interrupt (zero if no interrupt)
-    input key_irq;
-    assign IRQ_in[1] = key_irq;
+    input key_w;
+    input key_s;
+
+    assign IRQ_in[1] = key_w;
+    assign IRQ_in[2] = key_s;
     wire [31:0] Iin;  // Instruction in
 
     wire [4:0] SA;
@@ -117,7 +120,7 @@ module cpu(CLK, RESET, key_irq);
             irq_pending <= irq_pending | IRQ_in;
             
             // Clear the bit of the interrupt currently being serviced
-            if (~(irq_pending == 4'd0)) begin
+            if (~(irq_pending == 4'd0) && MIE) begin
                 irq_pending[irq_id] <= 1'b0;
             end
         end

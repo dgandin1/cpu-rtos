@@ -181,7 +181,7 @@ class CodeGeneratorSimplified:
         for i, param in enumerate(stmt.params):
             offset = current_scope.declare_variable(param["name"], param["type"])
             arg_reg = f"r{i + 3}"
-            self.emit(f"SW {arg_reg} r1 -{offset}")
+            self.emit(f"SW {arg_reg} r1 {offset}")
         
         self.generate_block(stmt.body.statements)
 
@@ -275,9 +275,8 @@ class CodeGeneratorSimplified:
             self.emit(f"BLT {reg_left} {reg_right} {label_then}")
             self.emit(f"BEQ x0 x0 {label_end}")
         elif condition.operator.type == TokenType.GT:
-            self.emit(f"BLT {reg_left} {reg_right} {label_then}")
-            print("TokenType.GT (>): NOT IMPLEMENTED")
-            self.emit(f"BGE {reg_left} {reg_right} {label_then}")
+            self.emit(f"BLT {reg_right} {reg_left} {label_then}")
+            self.emit(f"BEQ x0 x0 {label_end}")
         elif condition.operator.type == TokenType.EQEQ:
             self.emit(f"BEQ {reg_left} {reg_right}  {label_then}")
             self.emit(f"BEQ x0 x0 {label_end}")
@@ -322,7 +321,7 @@ class CodeGeneratorSimplified:
             
             result_register = self.next_reg()
             # LW result_register, offset(SP)
-            self.emit(f"LW {result_register} r1 -{sym['offset']}")
+            self.emit(f"LW {result_register} r1 {sym['offset']}")
             return result_register
             
         elif isinstance(node, Binary):
@@ -392,14 +391,14 @@ class CodeGeneratorSimplified:
 
         reg_val = self.generate_expr(stmt.value)
         # Store updated value to stack location
-        self.emit(f"SW {reg_val} r1 -{sym['offset']}")
+        self.emit(f"SW {reg_val} r1 {sym['offset']}")
         self.free_reg(reg_val)
     
     def generate_var_decl(self, stmt:VarDecl):
 
         offset = self.scopes[-1].declare_variable(stmt.name, stmt.type)
         reg_right = self.generate_binary(stmt.initializer)
-        self.emit(f"SW {reg_right} r1 -{offset}")
+        self.emit(f"SW {reg_right} r1 {offset}")
         self.free_reg(reg_right)
     
     def generate_while(self, stmt):
