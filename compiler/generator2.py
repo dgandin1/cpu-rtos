@@ -1,4 +1,4 @@
-from parser import Node, VarDecl, If, Binary, Literal, Variable, ExprStmt, Assign, Block, While, Struct, Funct, FunctCall, ReturnStmt, Unary
+from parser import Node, VarDecl, If, Binary, Literal, Variable, ExprStmt, Assign, Block, While, Struct, Funct, FunctCall, ReturnStmt, Unary, PointerType
 from lexer import TokenType
 
 
@@ -164,6 +164,31 @@ class CodeGeneratorSimplified:
 
         # 1 slot for Return Address + all local declarations + parameters
         return 1 + count_decls(stmt.body.statements) + len(stmt.params)
+
+    #Generates the address of a variable. Used for pointers
+    def generate_address(self, node):
+
+        result_register = self.next_reg()
+
+        if isinstance(node, Variable):
+
+            # Global variable
+            if node.name in self.globals:
+                address = self.globals[node.name]
+                self.emit(f"ADDI {result_register} r0 {address}")
+                return result_register
+
+            # Local variable
+            sym = self.scopes[-1].lookup(node.name)
+
+            if not sym:
+                raise Exception(f"Undefined variable {node.name}")
+
+            self.emit(f"ADDI {result_register} r1 {sym['offset']}")
+            return result_register
+
+        raise Exception("Cannot take address of this expression")
+    
         
     def generate_funct(self, stmt):
 
@@ -347,11 +372,16 @@ class CodeGeneratorSimplified:
 
     def generate_unary(self, node):
 
+        if node.operator.type == TokenType.AMPERSAND:
+            return self.generate_address(node.operand)
+
         operand_reg = self.generate_expr(node.operand)
         result_register = self.next_reg()
 
         if node.operator.type == TokenType.MINUS:
             self.emit(f"SUB {result_register} x0 {operand_reg}")
+        elif node.operator.type == TokenType.MUL:
+            self.emit(f"LW {result_register} {operand_reg} 0")
         else:
             raise Exception("Unsupported unary operator")
 
@@ -360,46 +390,86 @@ class CodeGeneratorSimplified:
         return result_register
 
     def generate_expr(self, stmt):
-        if isinstance(stmt, Literal):
-            return self.generate_binary(stmt)
-        elif isinstance(stmt, Variable):
-            return self.generate_binary(stmt)
-        elif isinstance(stmt, Binary):
-            return self.generate_binary(stmt)
-        elif isinstance(stmt, Unary):
-            return self.generate_unary(stmt)
-        elif isinstance(stmt.expr, Assign):
-            self.generate_assign(stmt.expr)
-        elif isinstance(stmt.expr, FunctCall):
-        
-            return self.generate_funct_call(stmt)
-        else:
-            print(stmt)
-            raise Exception("Unsupported expression type")
+            if isinstance(stmt, Literal):
+                return self.generate_binary(stmt)
+
+            elif isinstance(stmt, Variable):
+                return self.generate_binary(stmt)
+
+            elif isinstance(stmt, Binary):
+                return self.generate_binary(stmt)
+
+            elif isinstance(stmt, Unary):
+                return self.generate_unary(stmt)
+
+            elif isinstance(stmt, Assign):
+                return self.generate_assign(stmt)
+
+            elif isinstance(stmt, ExprStmt):
+                if isinstance(stmt.expr, Assign):
+                    return self.generate_assign(stmt.expr)
+
+                elif isinstance(stmt.expr, FunctCall):
+                    return self.generate_funct_call(stmt)
+
+                return self.generate_expr(stmt.expr)
+
+            elif isinstance(stmt, FunctCall):
+                return self.generate_funct_call(ExprStmt(expr=stmt))
+
+            else:
+                print(stmt)
+                raise Exception("Unsupported expression type")
     
     def generate_assign(self, stmt:Assign):
 
-        if stmt.name in self.globals:
-            reg_val = self.generate_expr(stmt.value)
-            self.emit(f"SW {reg_val} r0 {self.globals[stmt.name]}")
+        reg_val = self.generate_expr(stmt.value)
+
+        # x = value
+        if isinstance(stmt.target, Variable):
+
+            name = stmt.target.name
+
+            # Global
+            if name in self.globals:
+                self.emit(f"SW {reg_val} r0 {self.globals[name]}")
+                self.free_reg(reg_val)
+                return
+
+            # Local
+            sym = self.scopes[-1].lookup(name)
+
+            if not sym:
+                raise Exception(f"Variable {name} not declared in scope.")
+
+            self.emit(f"SW {reg_val} r1 {sym['offset']}")
             self.free_reg(reg_val)
             return
 
-        sym = self.scopes[-1].lookup(stmt.name)
-        if not sym:
-            raise Exception(f"Variable {stmt.name} not declared in scope.")
+        # *p = value
+        elif isinstance(stmt.target, Unary) and \
+            stmt.target.operator.type == TokenType.MUL:
 
-        reg_val = self.generate_expr(stmt.value)
-        # Store updated value to stack location
-        self.emit(f"SW {reg_val} r1 {sym['offset']}")
-        self.free_reg(reg_val)
+            address_reg = self.generate_expr(stmt.target.operand)
+
+            self.emit(f"SW {reg_val} {address_reg} 0")
+
+            self.free_reg(reg_val)
+            self.free_reg(address_reg)
+            return
+
+        else:
+            raise Exception("Invalid assignment target.")
+
     
     def generate_var_decl(self, stmt:VarDecl):
 
         offset = self.scopes[-1].declare_variable(stmt.name, stmt.type)
-        reg_right = self.generate_binary(stmt.initializer)
-        self.emit(f"SW {reg_right} r1 {offset}")
-        self.free_reg(reg_right)
+        if stmt.initializer is not None:
+            reg_right = self.generate_expr(stmt.initializer)
+
+            self.emit(f"SW {reg_right} r1 {offset}")
+            self.free_reg(reg_right)
     
     def generate_while(self, stmt):
         

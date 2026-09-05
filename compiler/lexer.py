@@ -42,6 +42,7 @@ class TokenType(Enum):
     COMMA = auto()
     D_QUOTE = auto()
     S_QUOTE = auto()
+    AMPERSAND = auto()
 
 KEYWORDS = {
         "if": TokenType.IF,
@@ -126,6 +127,8 @@ class Lexer:
             return Token(TokenType.MUL)
         elif (c == '/'):
             return Token(TokenType.DIV)
+        elif (c == '&'):
+            return Token(TokenType.AMPERSAND)
         elif (c == '('):
             return Token(TokenType.LPAREN)
         elif (c == ')'):

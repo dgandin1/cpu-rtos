@@ -1,28 +1,9 @@
-void display_rect(int x, int y, int w, int h) {
-
-    int i = 0;
-    int j = 0;
-    while (i < w) {
-        j = 0;
-        while (j < h) {
-            on_pixel(x+i, y+j);
-            j = j + 1;
-        }
-        i = i + 1;
-    }
-
+int foo(int i) {
+    return *i;
 }
 
 int main() {
-    
-    print(8);
-    display_rect(32, 32, 3, 3);
-
+    int x = 7;
+    int *i = &x;
+    int j = foo(i);
 }
-
-void IRQ_handler() {
-
-    int i = get_mcause();
-    
-}
-

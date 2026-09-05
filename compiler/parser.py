@@ -73,12 +73,21 @@ class Parser:
 
     def var_decl(self, type_):
 
+        pointer_depth = 0
+
+        while self.peek().type == TokenType.MUL:
+            self.consume()
+            pointer_depth += 1
+
         if self.peek2().type == TokenType.LPAREN:
             return self.func_decl(type_)
             
 
         name_token = self.consume_and_check(TokenType.IDENT, "Expected variable name")
         var_name = name_token.value
+
+        for _ in range(pointer_depth):
+            type_ = PointerType(type_)
 
         initializer = None
 
@@ -202,10 +211,8 @@ class Parser:
             equals = self.consume()
             value = self.assignment()
 
-            if isinstance(expr, Variable):
-                return Assign(expr.name, value)
+            return Assign(expr, value)
 
-            raise Exception("Invalid assignment target.")
 
         return expr
     
@@ -216,6 +223,7 @@ class Parser:
             operator = self.consume()
             right = self.comparison()
             expr = Binary(expr, operator, right)
+
 
         return expr
     
@@ -255,12 +263,17 @@ class Parser:
         return expr
     
     def unary(self):
-        if self.peek().type == TokenType.MINUS:
+        if self.peek().type in (
+            TokenType.MINUS,
+            TokenType.MUL,
+            TokenType.AMPERSAND,
+        ):
             operator = self.consume()
             right = self.unary()
             return Unary(operator, right)
 
         return self.primary()
+
     
     def primary(self):
         
@@ -348,8 +361,8 @@ class ExprStmt(Node):
 # === Expressions ===
 
 class Assign(Node):
-    def __init__(self, name, value):
-        self.name = name
+    def __init__(self, target, value):
+        self.target = target
         self.value = value
 
 
@@ -369,6 +382,10 @@ class Unary(Node):
 class Literal(Node):
     def __init__(self, value):
         self.value = value
+
+class PointerType(Node):
+    def __init__(self, base):
+        self.base = base
 
 
 class Variable(Node):
