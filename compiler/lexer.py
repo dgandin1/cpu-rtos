@@ -43,6 +43,7 @@ class TokenType(Enum):
     D_QUOTE = auto()
     S_QUOTE = auto()
     AMPERSAND = auto()
+    DOT = auto()
 
 KEYWORDS = {
         "if": TokenType.IF,
@@ -101,7 +102,7 @@ class Lexer:
     
     def identifier(self):
         # Need to check for `.` in case it is a struct declaration
-        while self.peek().isalnum() or self.peek() == "." or self.peek() == "_":
+        while self.peek().isalnum() or  self.peek() == "_":
             self.advance()
         value_str = self.text[self.start:self.currentChar]
         type_ = KEYWORDS.get(value_str, TokenType.IDENT)
@@ -129,6 +130,8 @@ class Lexer:
             return Token(TokenType.DIV)
         elif (c == '&'):
             return Token(TokenType.AMPERSAND)
+        elif (c == '.'):
+            return Token(TokenType.DOT)
         elif (c == '('):
             return Token(TokenType.LPAREN)
         elif (c == ')'):

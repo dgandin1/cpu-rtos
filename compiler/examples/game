@@ -1,0 +1,324 @@
+ADDI x1 x0 100
+BEQ x0 x0 4
+ADD x0 x0 x0
+ADD x0 x0 x0
+BEQ x0 x0 IRQ_handler
+ADDI r2 r0 32
+SW r2 r0 20
+ADDI r2 r0 48
+SW r2 r0 21
+ADDI r2 r0 0
+SW r2 r0 22
+ADDI r2 r0 0
+SW r2 r0 23
+ADDI r2 r0 0
+SW r2 r0 24
+ADDI r2 r0 0
+SW r2 r0 25
+ADDI r2 r0 0
+SW r2 r0 26
+ADDI r30 r31 2
+BEQ x0 x0 main
+halt_loop:
+BEQ x0 x0 halt_loop
+display_rect:
+ADDI r1 r1 -7
+SW r30 r1 0
+SW r3 r1 -1
+SW r4 r1 -2
+SW r5 r1 -3
+SW r6 r1 -4
+ADDI r3 x0 0
+SW r3 r1 -5
+ADDI r3 x0 0
+SW r3 r1 -6
+start_0:
+LW r3 r1 -5
+LW r4 r1 -3
+BLT r3 r4 2
+BEQ x0 x0 end_1
+ADDI r4 x0 0
+SW r4 r1 -6
+start_2:
+LW r4 r1 -6
+LW r3 r1 -4
+BLT r4 r3 2
+BEQ x0 x0 end_3
+LW r4 r1 -1
+LW r5 r1 -5
+ADD r3 r4 r5
+LW r4 r1 -2
+LW r6 r1 -6
+ADD r5 r4 r6
+ADD r4 x0 r5
+ADDI r30 r31 2
+BEQ r0 r0 on_pixel
+LW r6 r1 -6
+ADDI r4 x0 1
+ADD r5 r6 r4
+SW r5 r1 -6
+BEQ x0 x0 start_2
+end_3:
+LW r4 r1 -5
+ADDI r6 x0 1
+ADD r5 r4 r6
+SW r5 r1 -5
+BEQ x0 x0 start_0
+end_1:
+LW r30 r1 0
+ADDI r1 r1 7
+JMP r30
+main:
+ADDI r1 r1 -1
+SW r30 r1 0
+ADDI r5 x0 1
+ADD r3 x0 r5
+ADDI r30 r31 2
+BEQ r0 r0 print
+ADDI r5 r0 1
+SLL r5 r5 1
+ADDI r5 r5 1
+SLL r5 r5 1
+ADDI r5 r5 1
+SLL r5 r5 1
+ADDI r5 r5 1
+SLL r5 r5 1
+SLL r5 r5 1
+ADDI r5 r5 1
+SLL r5 r5 1
+SLL r5 r5 1
+SLL r5 r5 1
+SLL r5 r5 1
+SLL r5 r5 1
+ADDI r5 r5 1
+SLL r5 r5 1
+SLL r5 r5 1
+SLL r5 r5 1
+ADDI r5 r5 1
+SLL r5 r5 1
+SLL r5 r5 1
+SLL r5 r5 1
+SLL r5 r5 1
+ADD r3 x0 r5
+ADDI r30 r31 2
+BEQ r0 r0 pit_ldvalue
+LW r30 r1 0
+ADDI r1 r1 1
+JMP r30
+IRQ_handler:
+ADDI r1 r1 -2
+SW r30 r1 0
+ADDI r30 r31 2
+BEQ r0 r0 get_mcause
+SW r29 r1 -1
+LW r29 r1 -1
+ADD r3 x0 r29
+ADDI r30 r31 2
+BEQ r0 r0 print
+LW r29 r1 -1
+ADDI r5 x0 3
+BEQ r29 r5  if_then_4
+BEQ x0 x0 if_end_5
+if_then_4:
+ADDI r30 r31 2
+BEQ r0 r0 clear_screen
+LW r4 r0 20
+LW r7 r0 24
+ADD r6 r4 r7
+SW r6 r0 20
+LW r7 r0 21
+LW r4 r0 25
+ADD r6 r7 r4
+SW r6 r0 21
+LW r6 r0 20
+ADDI r4 x0 64
+BEQ r6 r4  if_then_6
+BEQ x0 x0 if_end_7
+if_then_6:
+LW r7 r0 24
+ADD r3 x0 r7
+ADDI r7 x0 1
+SUB r8 x0 r7
+ADD r4 x0 r8
+ADDI r30 r31 2
+BEQ r0 r0 mul
+SW r29 r0 24
+if_end_7:
+LW r6 r0 20
+ADD r3 x0 r6
+LW r6 r0 21
+ADD r4 x0 r6
+ADDI r6 x0 5
+ADD r5 x0 r6
+ADDI r6 x0 5
+ADDI r30 r31 2
+BEQ r0 r0 display_rect
+if_end_5:
+LW r30 r1 0
+ADDI r1 r1 2
+MRET
+mul:
+ADDI r1 r1 -3
+SW r30 r1 0
+SW r3 r1 -1
+SW r4 r1 -2
+ADDI r29 r0 0
+ADDI r2 r0 1
+BEQ r4 r0 7
+AND r5 r4 r2
+BEQ r5 r0 2
+ADD r29 r29 r3
+SLL r3 r3 0
+SRL r4 r4 0
+BEQ r0 r0 -6
+LW r30 r1 0
+ADDI r1 r1 3
+JMP r30
+lshift:
+ADDI r1 r1 -3
+SW r30 r1 0
+SW r3 r1 -1
+SW r4 r1 -2
+ADD r29 r3 r0
+BEQ r4 r0 4
+SLL r29 r29 0
+ADDI r4 r4 -1
+BEQ r0 r0 -3
+LW r30 r1 0
+ADDI r1 r1 3
+JMP r30
+rshift:
+ADDI r1 r1 -3
+SW r30 r1 0
+SW r3 r1 -1
+SW r4 r1 -2
+ADD r29 r3 r0
+BEQ r4 r0 4
+SRL r29 r29 0
+ADDI r4 r4 -1
+BEQ r0 r0 -3
+LW r30 r1 0
+ADDI r1 r1 3
+JMP r30
+abs:
+ADDI r1 r1 -2
+SW r30 r1 0
+SW r3 r1 -1
+ADD r29 r3 r0
+BLT r29 r0 2
+BEQ r0 r0 2
+SUB r29 r0 r29
+LW r30 r1 0
+ADDI r1 r1 2
+JMP r30
+min:
+ADDI r1 r1 -3
+SW r30 r1 0
+SW r3 r1 -1
+SW r4 r1 -2
+BLT r3 r4 2
+ADD r29 r4 r0
+BEQ r0 r0 2
+ADD r29 r3 r0
+LW r30 r1 0
+ADDI r1 r1 3
+JMP r30
+max:
+ADDI r1 r1 -3
+SW r30 r1 0
+SW r3 r1 -1
+SW r4 r1 -2
+BLT r3 r4 2
+ADD r29 r3 r0
+BEQ r0 r0 2
+ADD r29 r4 r0
+LW r30 r1 0
+ADDI r1 r1 3
+JMP r30
+printlcd:
+ADDI r1 r1 -2
+SW r30 r1 0
+SW r3 r1 -1
+ADDI r11 r0 1
+SW r3 r11 0
+ADD r12 r0 r3
+LW r30 r1 0
+ADDI r1 r1 2
+JMP r30
+on_pixel_OLD:
+ADDI r1 r1 -3
+SW r30 r1 0
+SW r3 r1 -1
+SW r4 r1 -2
+ADD r24 r3 r0
+LW r5 r1 -2
+ADD r3 x0 r5
+ADDI r5 x0 64
+ADD r4 x0 r5
+ADDI r30 r31 2
+BEQ r0 r0 mul
+ADDI r6 r24 101
+ADD r6 r6 r29
+LW r7 r6 0
+ADDI r1 r0 1
+OR r7 r1 r7
+SW r7 r6 0
+LW r30 r1 0
+ADDI r1 r1 3
+JMP r30
+on_pixel:
+ADDI r1 r1 -3
+SW r30 r1 0
+SW r3 r1 -1
+SW r4 r1 -2
+ADDI r20 r0 31
+AND r20 r20 r3
+SLL r21 r4 1
+SRL r7 r3 1
+SRL r7 r7 1
+SRL r7 r7 1
+SRL r7 r7 1
+SRL r7 r7 1
+ADD r21 r7 r21
+ADDI r21 r21 101
+LW r22 r21 0
+ADDI r23 r0 1
+BEQ r20 r0 4
+SLL r23 r23 1
+ADDI r20 r20 -1
+BEQ r0 r0 -3
+OR r24 r23 r22
+SW r24 r21 0
+LW r30 r1 0
+ADDI r1 r1 3
+JMP r30
+clear_screen:
+ADDI r1 r1 -1
+SW r30 r1 0
+LW r30 r1 0
+ADDI r1 r1 1
+JMP r30
+get_mcause:
+ADDI r1 r1 -1
+SW r30 r1 0
+ADD r29 r26 r0
+LW r30 r1 0
+ADDI r1 r1 1
+JMP r30
+print:
+ADDI r1 r1 -2
+SW r30 r1 0
+SW r3 r1 -1
+SW r3 r0 1
+LW r30 r1 0
+ADDI r1 r1 2
+JMP r30
+pit_ldvalue:
+ADDI r1 r1 -2
+SW r30 r1 0
+SW r3 r1 -1
+ADDI r17 r0 4090
+SW r3 r17 0
+LW r30 r1 0
+ADDI r1 r1 2
+JMP r30

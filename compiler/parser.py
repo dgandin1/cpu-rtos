@@ -58,13 +58,28 @@ class Parser:
         name_token = self.consume_and_check(TokenType.IDENT, "Expected function name").value
         self.consume()
 
-        while not self.peek().type == TokenType.RPAREN:
-            param_type = self.consume()
-            param_name = self.consume_and_check(TokenType.IDENT, "Expected param name").value
-            params.append({"name":param_name, "type":param_type})
+        if self.peek().type != TokenType.RPAREN:
+            while True:
+                param_type_token = self.consume()
+                base_type = param_type_token.value if param_type_token.type in (TokenType.IDENT, TokenType.STRUCT) else param_type_token.type
+                
+                pointer_depth = 0
+                while self.peek().type == TokenType.MUL:
+                    self.consume()
+                    pointer_depth += 1
 
-            if self.peek().type == TokenType.COMMA:
-                self.consume()
+                param_name = self.consume_and_check(TokenType.IDENT, "Expected param name").value
+                
+                final_type = base_type
+                for _ in range(pointer_depth):
+                    final_type = PointerType(final_type)
+                    
+                params.append({"name": param_name, "type": final_type})
+
+                if self.peek().type == TokenType.COMMA:
+                    self.consume()
+                else:
+                    break
             
         self.consume()
         body = self.statement()
@@ -128,7 +143,7 @@ class Parser:
 
     def expression(self):
         
-        if self.peek2().type == TokenType.LPAREN:
+        if self.peek().type == TokenType.IDENT and self.peek2().type == TokenType.LPAREN:
             return self.funct_call()
 
         return self.assignment()
@@ -145,20 +160,50 @@ class Parser:
         name = self.consume_and_check(TokenType.IDENT, "Expected Struct Identifier")
         self.structs.append(name.value)
         if not self.peek().type == TokenType.LBRACE:
-            var_name = self.consume()
+            pointer_depth = 0
+            while self.peek().type == TokenType.MUL:
+                self.consume()
+                pointer_depth += 1
+                
+            var_name = self.consume_and_check(TokenType.IDENT, "Expected variable name")
+
+            initializer = None
+            if self.peek().type == TokenType.ASSIGN: 
+                self.consume()
+                initializer = self.expression()
+
             self.consume_and_check(TokenType.SEMI, "Expected semicolon")
-            return VarDecl(var_name, None, name)
+            
+            type_val = name.value
+            for _ in range(pointer_depth):
+                type_val = PointerType(type_val)
+                
+            return VarDecl(var_name.value, initializer, type_val)
 
         self.consume_and_check(TokenType.LBRACE, "Expected LBRACE")
 
-        while self.peek().type == TokenType.INT:
+        while self.peek().type in (TokenType.INT, TokenType.STRUCT, TokenType.IDENT):
 
-            self.consume()
+            field_type = self.consume()
+            if field_type.type == TokenType.STRUCT:
+                struct_type_name = self.consume_and_check(TokenType.IDENT, "Expected struct name")
+                field_type_value = struct_type_name.value
+            else:
+                field_type_value = field_type.value
+
+            pointer_depth = 0
+            while self.peek().type == TokenType.MUL:
+                self.consume()
+                pointer_depth += 1
+
             var_name = self.consume_and_check(TokenType.IDENT, "Expected identifier")
-            definitions.append({"name":var_name.value, "type":TokenType.INT})
+            
+            definitions.append({"name": var_name.value, "type": field_type_value, "pointer_depth": pointer_depth})
+            
             self.consume_and_check(TokenType.SEMI, "Expected semicolon")
         
         self.consume_and_check(TokenType.RBRACE, "Expected RPAREN")
+        self.consume_and_check(TokenType.SEMI, "Expected semicolon")
         return Struct(name.value, definitions)
 
     def statement(self):
@@ -272,7 +317,7 @@ class Parser:
             right = self.unary()
             return Unary(operator, right)
 
-        return self.primary()
+        return self.postfix()
 
     
     def primary(self):
@@ -307,6 +352,15 @@ class Parser:
             return Literal(literal_string[:-1])
 
         raise Exception("Expected expression.")
+
+    # Dot in structs
+    def postfix(self):
+        expr = self.primary()
+        while self.peek().type == TokenType.DOT:
+            self.consume()
+            field_name = self.consume_and_check(TokenType.IDENT, "Expected field name")
+            expr = FieldAccess(expr, field_name.value)
+        return expr
     
     def parse(self):
 
@@ -411,4 +465,9 @@ class FunctCall(Node):
 class ReturnStmt(Node):
     def __init__(self, expr):
         self.expr = expr
+
+class FieldAccess(Node):
+    def __init__(self, object_expr, field):
+        self.object_expr = object_expr
+        self.field = field
         

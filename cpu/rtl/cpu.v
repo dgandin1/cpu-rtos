@@ -58,7 +58,8 @@ module cpu(CLK, RESET, key_w, key_s);
     );
 
     wire [31:0] finalDataA;
-    assign finalDataA = (SA == 5'd31) ? PC_current : (SA == 5'd26) ? {30'd0, MCAUSE} : DataA;
+    // deal with special purpose registers
+    assign finalDataA = (SA == 5'd31) ? PC_current : (SA == 5'd26) ? {30'd0, MCAUSE} : (SA == 5'd27) ? MEPC: DataA;
 
     pc program_counter(
         .RESET(RESET),
@@ -140,11 +141,15 @@ module cpu(CLK, RESET, key_w, key_s);
             MIE <= 1'b1;
             MCAUSE <= 2'd0;
         end else if (~(irq_pending == 4'd0) && MIE) begin
-            MEPC <= PC_current;
+            MEPC <= pc_standard_next;
             MIE <= 1'b0;
             MCAUSE <= irq_id;
         end else if (is_mret) begin
             MIE <= 1'b1;
+        end else begin
+            if (LD && (DR == 5'd27)) begin
+                MEPC <= D_in;
+            end 
         end
 
     end

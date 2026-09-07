@@ -24,7 +24,7 @@ class Linker:
         # --- PASS 2: Filter out the declaration lines ---
         cleaned_assembly = []
         for line in self.assembly:
-            if line.endswith(":"):
+            if line.endswith(":") or line.startswith("//"):
                 continue
             cleaned_assembly.append(line)
         self.assembly = cleaned_assembly
@@ -45,6 +45,18 @@ class Linker:
                     tokens[j] = str(offset)
             
             # Reconstruct the line back together
+            self.assembly[i] = " ".join(tokens)
+
+        # FINAL PASS, replace __ADDR__ with stuff
+        for i in range(len(self.assembly)):
+            line = self.assembly[i]
+            tokens = line.split()
+            for j in range(len(tokens)):
+                token = tokens[j]
+                if token.startswith("__ADDR__"):
+                    name = token[8:]
+                    if name in locations:
+                        tokens[j] = str(locations[name])
             self.assembly[i] = " ".join(tokens)
 
         return self.assembly

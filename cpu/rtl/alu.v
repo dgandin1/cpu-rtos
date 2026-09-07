@@ -19,7 +19,7 @@ module alu(A, B, FS, Y, C, N, Z, V);
     wire V_ADD;
 
     //Modules
-    controller c(
+    controller cont(
         .BSEL(BSEL),
         .CISEL(CISEL),
         .OSEL(OSEL),

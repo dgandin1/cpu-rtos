@@ -1,4 +1,4 @@
-from parser import Node, VarDecl, If, Binary, Literal, Variable, ExprStmt, Assign, Block, While, Struct, Funct, FunctCall, ReturnStmt, Unary, PointerType
+from parser import Node, VarDecl, If, Binary, Literal, Variable, ExprStmt, Assign, Block, While, Struct, Funct, FunctCall, ReturnStmt, Unary, PointerType, FieldAccess
 from lexer import TokenType
 
 
@@ -8,6 +8,7 @@ from lexer import TokenType
 # Return Address - R30
 # Return value - r29
 # interrupt status register - r26
+# Interrupt retunr address - r27
 
 class Symbol_Table:
 
@@ -24,16 +25,22 @@ class Symbol_Table:
             return self.parent_table.lookup(name)
         return None
 
-    def declare_variable(self, name, type_):
+    def declare_variable(self, name, type_, struct_layouts):
         # Reserve slot on stack frame
         # Slot 0 is reserved for RA, so locals start at offset 1, 2, 3...
-        self.frame_offset += 1
+        size = 1
+        if isinstance(type_, str) and type_ in struct_layouts:
+            size = struct_layouts[type_]["size"]
+
+        base_offset = self.frame_offset + 1
+        self.frame_offset += size
         self.symbols[name] = {
             "name": name,
-            "offset": self.frame_offset,
-            "type": type_
+            "offset": base_offset,
+            "type": type_,
+            "size": size
         }
-        return self.frame_offset
+        return base_offset
 
 
 class CodeGeneratorSimplified:
@@ -41,7 +48,7 @@ class CodeGeneratorSimplified:
     def __init__(self, tree, stack_start):
         
         self.tree = tree
-        self.current_register = 3
+        self.current_register = 8
         self.code = []
         self.current_line = 0
         self.stack_pointer = stack_start
@@ -61,6 +68,12 @@ class CodeGeneratorSimplified:
         self.current_frame_size = 0
 
         self.label_counter = 0
+
+        self.struct_layouts = {}
+
+        self.global_types = {}
+
+        self.function_names = []
     
     def emit(self, line):
 
@@ -88,6 +101,9 @@ class CodeGeneratorSimplified:
         self.current_register += 1
         self.current_line += 1
 
+        if self.current_register - 1 in [26, 27, 29, 30]:
+            self.current_register += 1
+
         return f"r{self.current_register - 1}"
     
     
@@ -104,6 +120,9 @@ class CodeGeneratorSimplified:
         for stmt in self.tree:
             if isinstance(stmt, Funct):
                 functions.append(stmt)
+                self.function_names.append(stmt.name)
+            elif isinstance(stmt, Struct):
+                self.register_struct(stmt)
             else:
                 global_statements.append(stmt)
 
@@ -143,11 +162,23 @@ class CodeGeneratorSimplified:
     def generate_globals(self, statements):
 
         for stmt in statements:
+            if not isinstance(stmt, VarDecl): 
+                continue
+                
             name = stmt.name
-            self.emit(f"ADDI r2 r0 {stmt.initializer.value}")
-            self.emit(f"SW r2 r0 {self.bss_offset}")
+            
+            self.global_types[name] = stmt.type
+            
+            if stmt.initializer is not None:
+                self.emit(f"ADDI r2 r0 {stmt.initializer.value}")
+                self.emit(f"SW r2 r0 {self.bss_offset}")
+            
             self.globals[name] = self.bss_offset
-            self.bss_offset += 1
+            
+            size = 1
+            if isinstance(stmt.type, str) and stmt.type in self.struct_layouts:
+                size = self.struct_layouts[stmt.type]["size"]
+            self.bss_offset += size
     
     
     def calulate_function_stack_size(self, stmt):
@@ -155,7 +186,10 @@ class CodeGeneratorSimplified:
             total = 0
             for s in statements:
                 if isinstance(s, VarDecl):
-                    total += 1
+                    if isinstance(s.type, str) and s.type in self.struct_layouts:
+                        total += self.struct_layouts[s.type]["size"]
+                    else:
+                        total += 1
                 elif isinstance(s, If):
                     total += count_decls(s.then_branch.statements)
                 elif isinstance(s, While):
@@ -165,12 +199,36 @@ class CodeGeneratorSimplified:
         # 1 slot for Return Address + all local declarations + parameters
         return 1 + count_decls(stmt.body.statements) + len(stmt.params)
 
+    def get_type(self, node):
+        if isinstance(node, Variable):
+            sym = self.scopes[-1].lookup(node.name)
+            if sym: return sym["type"]
+            
+            if node.name in self.global_types:
+                return self.global_types[node.name]
+                
+        elif isinstance(node, FieldAccess):
+            
+            base_type = self.get_type(node.object_expr)
+           
+            return self.struct_layouts[base_type]["fields"][node.field]["type"]
+            
+        elif isinstance(node, Unary) and node.operator.type == TokenType.MUL:
+            
+            base_type = self.get_type(node.operand)
+            if isinstance(base_type, PointerType):
+                return base_type.base
+                
+        return TokenType.INT
+
     #Generates the address of a variable. Used for pointers
     def generate_address(self, node):
 
-        result_register = self.next_reg()
+        
 
         if isinstance(node, Variable):
+
+            result_register = self.next_reg()
 
             # Global variable
             if node.name in self.globals:
@@ -187,7 +245,34 @@ class CodeGeneratorSimplified:
             self.emit(f"ADDI {result_register} r1 {sym['offset']}")
             return result_register
 
+        if isinstance(node, FieldAccess):
+
+            #recursively get the base address
+            base_reg = self.generate_address(node.object_expr)
+            struct_type = self.get_type(node.object_expr)
+            field_offset = self.struct_layouts[struct_type]["fields"][node.field]["offset"]
+            if field_offset > 0:
+                self.emit(f"ADDI {base_reg} {base_reg} {field_offset}")
+            return base_reg
+
+        if isinstance(node, Unary) and node.operator.type == TokenType.MUL:
+            return self.generate_expr(node.operand)
+
         raise Exception("Cannot take address of this expression")
+
+    def register_struct(self, stmt):
+
+        offset = 0
+        fields = {}
+        for decl in stmt.declerations:
+            field_type = decl["type"]
+            pointer_depth = decl.get("pointer_depth", 0)
+            for _ in range(pointer_depth):
+                field_type = PointerType(field_type)
+            # Assuming only type is int [FIX when adding more datatypes]
+            fields[decl["name"]] = {"offset":offset, "type":field_type}
+            offset += 1
+        self.struct_layouts[stmt.name] = {"size":offset, "fields":fields}
     
         
     def generate_funct(self, stmt):
@@ -204,7 +289,7 @@ class CodeGeneratorSimplified:
 
         #parameters
         for i, param in enumerate(stmt.params):
-            offset = current_scope.declare_variable(param["name"], param["type"])
+            offset = current_scope.declare_variable(param["name"], param["type"], self.struct_layouts)
             arg_reg = f"r{i + 3}"
             self.emit(f"SW {arg_reg} r1 {offset}")
         
@@ -230,25 +315,38 @@ class CodeGeneratorSimplified:
             if val == 0:
                 self.emit(f"ADD {tmp_reg}, r0, r0")
                 return tmp_reg
-            bits = bin(val)[2:]  # cut off first two characters in python binary string representation
+            bits = bin(val)[2:]  
             self.emit(f"ADDI {tmp_reg} r0 1")
             for bit in bits[1:]:
                 self.emit(f"SLL {tmp_reg} {tmp_reg} 1")
                 if bit == "1":
                     self.emit(f"ADDI {tmp_reg} {tmp_reg} 1")
             return tmp_reg
+        elif stmt.expr.name.value == "__get_sp":
+            reg = self.next_reg()
+            self.emit(f"ADD {reg} r0 r1")
+            return reg
+        elif stmt.expr.name.value == "__save_sp":
+            val_reg = self.generate_expr(stmt.expr.params[0])
+            self.emit(f"ADD r1 r0 {val_reg}")
+            self.free_reg(val_reg)
+            return val_reg
 
-        #evaluate arguments and put into registers
+        #evaluate in safe tempory register
+        eval_regs = []
         for i, arg in enumerate(stmt.expr.params):
             reg = self.generate_expr(arg)
-            arg_reg = f"r{i + 3}"
-            if reg != arg_reg:
-                self.emit(f"ADD {arg_reg} x0 {reg}")
-                self.free_reg(reg)
+            eval_regs.append(reg)
         
-        #return address
+        for i, reg in enumerate(eval_regs):
+            arg_reg = f"r{i + 3}"
+            self.emit(f"ADD {arg_reg} x0 {reg}")
+            
+            # Safely free the temporary register now that it's an argument
+            self.free_reg(reg)
+        
+        # 3. Call the function
         self.emit("ADDI r30 r31 2")
-
         self.emit(f"BEQ r0 r0 {stmt.expr.name.value}")
 
         return "r29"
@@ -332,22 +430,18 @@ class CodeGeneratorSimplified:
             return self.generate_funct_call(ExprStmt(expr=node))
             
             
-        elif isinstance(node, Variable):
+        elif isinstance(node, Variable) or isinstance(node, FieldAccess):
 
-            if node.name in self.globals:
-                offset = self.globals[node.name]
+            # Is variable a function pointer?
+            if isinstance(node, Variable) and node.name in self.function_names:
                 result_register = self.next_reg()
-                self.emit(f"LW {result_register} r0 {offset}")
+                self.emit(f"ADDI {result_register} r0 __ADDR__{node.name}")
                 return result_register
 
-            sym = self.scopes[-1].lookup(node.name)
-            if not sym:
-                raise Exception(f"Undefined variable {node.name}")
+            addr_reg = self.generate_address(node)
             
-            result_register = self.next_reg()
-            # LW result_register, offset(SP)
-            self.emit(f"LW {result_register} r1 {sym['offset']}")
-            return result_register
+            self.emit(f"LW {addr_reg} {addr_reg} 0")
+            return addr_reg
             
         elif isinstance(node, Binary):
             result_register = self.next_reg()
@@ -393,7 +487,7 @@ class CodeGeneratorSimplified:
             if isinstance(stmt, Literal):
                 return self.generate_binary(stmt)
 
-            elif isinstance(stmt, Variable):
+            elif isinstance(stmt, Variable) or isinstance(stmt, FieldAccess):
                 return self.generate_binary(stmt)
 
             elif isinstance(stmt, Binary):
@@ -424,47 +518,18 @@ class CodeGeneratorSimplified:
     def generate_assign(self, stmt:Assign):
 
         reg_val = self.generate_expr(stmt.value)
+        addr_reg = self.generate_address(stmt.target)
 
-        # x = value
-        if isinstance(stmt.target, Variable):
+        self.emit(f"SW {reg_val} {addr_reg} 0")
 
-            name = stmt.target.name
-
-            # Global
-            if name in self.globals:
-                self.emit(f"SW {reg_val} r0 {self.globals[name]}")
-                self.free_reg(reg_val)
-                return
-
-            # Local
-            sym = self.scopes[-1].lookup(name)
-
-            if not sym:
-                raise Exception(f"Variable {name} not declared in scope.")
-
-            self.emit(f"SW {reg_val} r1 {sym['offset']}")
-            self.free_reg(reg_val)
-            return
-
-        # *p = value
-        elif isinstance(stmt.target, Unary) and \
-            stmt.target.operator.type == TokenType.MUL:
-
-            address_reg = self.generate_expr(stmt.target.operand)
-
-            self.emit(f"SW {reg_val} {address_reg} 0")
-
-            self.free_reg(reg_val)
-            self.free_reg(address_reg)
-            return
-
-        else:
-            raise Exception("Invalid assignment target.")
+        self.free_reg(reg_val)
+        self.free_reg(addr_reg)
+        return
 
     
     def generate_var_decl(self, stmt:VarDecl):
 
-        offset = self.scopes[-1].declare_variable(stmt.name, stmt.type)
+        offset = self.scopes[-1].declare_variable(stmt.name, stmt.type, self.struct_layouts)
         if stmt.initializer is not None:
             reg_right = self.generate_expr(stmt.initializer)
 

@@ -3,5 +3,4 @@ cpu/Python-3.12.13/
 cpu/.venv/
 cpu/rtl/sim_build/
 __pycache__/
-compiler/examples/
 comiler/__pycache__/
