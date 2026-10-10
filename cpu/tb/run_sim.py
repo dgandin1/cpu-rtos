@@ -100,7 +100,8 @@ if __name__ == "__main__":
             proj_dir / "dram.v",
             proj_dir / "regfile.v",
             proj_dir / "cpu.v",
-            proj_dir / "pit.v"
+            proj_dir / "pit.v",
+            proj_dir / "vga_controller.v"
         ]
 
     runner = get_runner(sim)

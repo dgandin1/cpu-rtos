@@ -1,4 +1,4 @@
-module cpu(CLK, RESET, key_w, key_s);
+module cpu(CLK, RESET, key_w, key_s, hsync, vsync, rgb);
 
     input CLK;
     input RESET;
@@ -9,6 +9,10 @@ module cpu(CLK, RESET, key_w, key_s);
     assign IRQ_in[1] = key_w;
     assign IRQ_in[2] = key_s;
     wire [31:0] Iin;  // Instruction in
+
+    output hsync;
+    output vsync;
+    output [2:0] rgb;
 
     wire [4:0] SA;
     wire [4:0] SB;
@@ -57,6 +61,19 @@ module cpu(CLK, RESET, key_w, key_s);
         .DataB(DataB)
     );
 
+    wire [31:0] vga_addr;
+    wire [31:0] vga_data;
+
+    vga_controller vga(
+        .CLK(CLK),
+        .RESET(RESET),
+        .vram_data(vga_data),
+        .vram_addr(vga_addr),
+        .rgb(rgb),
+        .hsync(hsync),
+        .vsync(vsync)
+    );
+
     wire [31:0] finalDataA;
     // deal with special purpose registers
     assign finalDataA = (SA == 5'd31) ? PC_current : (SA == 5'd26) ? {30'd0, MCAUSE} : (SA == 5'd27) ? MEPC: DataA;
@@ -99,9 +116,11 @@ module cpu(CLK, RESET, key_w, key_s);
     dram data_memory (
         .CLK(CLK),
         .MW(MW),
-        .ADDR(Alu_Output),
+        .ADDR_A(Alu_Output),
         .DATA_IN(DataB),
-        .DATA_OUT(dram_data_out)
+        .DATA_OUT_A(dram_data_out),
+        .DATA_OUT_B(vga_data),
+        .ADDR_B(vga_addr)
     );
 
     // INTERRUPT LOGIC
