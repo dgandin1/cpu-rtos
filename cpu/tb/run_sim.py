@@ -100,7 +100,8 @@ if __name__ == "__main__":
             proj_dir / "dram.v",
             proj_dir / "regfile.v",
             proj_dir / "cpu.v",
-            proj_dir / "pit.v"
+            proj_dir / "pit.v",
+            proj_dir / "vga_controller.v"
         ]
 
     runner = get_runner(sim)
@@ -109,7 +110,7 @@ if __name__ == "__main__":
             hdl_toplevel="cpu",               
             build_dir=proj_dir / "sim_build",  
             waves=False,                        
-            build_args=["-Wall", "-O3", "-CFLAGS", "-O3 -march=native", "--x-assign", "fast", "--x-initial", "fast"]   
+            build_args=["-Wall", "-Wno-fatal", "-O3", "-CFLAGS", "-O3 -march=native", "--x-assign", "fast", "--x-initial", "fast"]   
         )
 
     runner.test(

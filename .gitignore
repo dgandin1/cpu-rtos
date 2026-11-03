@@ -2,5 +2,14 @@ compiler/test.out
 cpu/Python-3.12.13/
 cpu/.venv/
 cpu/rtl/sim_build/
+cpu/rtl/sim_build*/
+cpu/vivado_build/
+.Xil/
+*.log
+*.jou
+*.bit
+*.ltx
+*.old
 __pycache__/
+compiler/__pycache__/
 comiler/__pycache__/
