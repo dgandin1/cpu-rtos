@@ -69,6 +69,13 @@ async def display_driver(dut):
 async def run_cpu_with_screen(dut):
     cocotb.start_soon(Clock(dut.CLK, 10, unit="ns").start()) #100 Mhz
 
+    hex_path = Path(__file__).resolve().parent.parent / "rtl" / "program.hex"
+    if hex_path.exists():
+        with open(hex_path) as f:
+            lines = [line.strip() for line in f if line.strip()]
+        for i, line in enumerate(lines):
+            dut.instruction_memory.mem[i].value = int(line, 16)
+
     dut.RESET.value = 1
     await Timer(50, unit="ns")
     dut.RESET.value = 0
@@ -99,9 +106,11 @@ if __name__ == "__main__":
             proj_dir / "iram.v",
             proj_dir / "dram.v",
             proj_dir / "regfile.v",
-            proj_dir / "cpu.v",
             proj_dir / "pit.v",
-            proj_dir / "vga_controller.v"
+            proj_dir / "vga_controller.v",
+            proj_dir / "sram.v",
+            proj_dir / "cache_controller.v",
+            proj_dir / "cpu.v"
         ]
 
     runner = get_runner(sim)

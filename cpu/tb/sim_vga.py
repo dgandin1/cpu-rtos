@@ -92,6 +92,13 @@ async def run_cpu_with_screen(dut):
     cocotb.start_soon(Clock(dut.CLK, 10, unit="ns").start()) 
 
     # Initialize inputs
+    hex_path = Path(__file__).resolve().parent.parent / "rtl" / "program.hex"
+    if hex_path.exists():
+        with open(hex_path) as f:
+            lines = [line.strip() for line in f if line.strip()]
+        for i, line in enumerate(lines):
+            dut.instruction_memory.mem[i].value = int(line, 16)
+
     dut.key_w.value = 0
     dut.key_s.value = 0
     dut.RESET.value = 1
@@ -133,6 +140,8 @@ if __name__ == "__main__":
             proj_dir / "regfile.v",
             proj_dir / "pit.v",
             proj_dir / "vga_controller.v", # Make sure this matches your new filename!
+            proj_dir / "sram.v",
+            proj_dir / "cache_controller.v",
             proj_dir / "cpu.v"
         ]
 
