@@ -22,7 +22,9 @@ void display_rect(int x, int y, int w, int h) {
 
 int main() {
 
-    pit_ldvalue(__long__(2500000));
+    display_rect(ball_x, ball_y, 2, 2);
+    display_rect(48, paddle_y, 2, 10);
+    pit_ldvalue(__long__(50000));
     
 }
 

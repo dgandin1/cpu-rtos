@@ -76,6 +76,8 @@ async def run_cpu_with_screen(dut):
         for i, line in enumerate(lines):
             dut.instruction_memory.mem[i].value = int(line, 16)
 
+    dut.key_w.value = 0
+    dut.key_s.value = 0
     dut.RESET.value = 1
     await Timer(50, unit="ns")
     dut.RESET.value = 0
