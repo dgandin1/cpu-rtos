@@ -15,3 +15,7 @@ pipe:
 cache:
 	LD_LIBRARY_PATH=/home/duke/dev/cpu-rtos/cpu/Python-3.12.13:$$LD_LIBRARY_PATH \
 	./../.venv/bin/python run_cache_test.py
+
+itcm:
+	LD_LIBRARY_PATH=/home/duke/dev/cpu-rtos/cpu/Python-3.12.13:$$LD_LIBRARY_PATH \
+	./../.venv/bin/python run_itcm_test.py

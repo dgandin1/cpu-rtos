@@ -16,7 +16,7 @@ module regfile(CLK, RESET, SA, SB, LD, DR, D_in, DataA, DataB);
 	
 	integer i;
 	
-	always @(posedge CLK) begin
+	always @(posedge CLK or posedge RESET) begin
 		if (RESET)
 			for (i = 0; i < 32; i = i + 1)
 				storage[i] <= 32'd0;

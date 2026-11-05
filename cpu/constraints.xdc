@@ -12,6 +12,10 @@ set_property -dict { PACKAGE_PIN A16 IOSTANDARD LVCMOS33 } [get_ports { rgb[2] }
 set_property -dict { PACKAGE_PIN K3  IOSTANDARD LVCMOS33 } [get_ports { hsync }];   # DIP Pin 4 (Green)
 set_property -dict { PACKAGE_PIN C15 IOSTANDARD LVCMOS33 } [get_ports { vsync }];   # DIP Pin 5 (Blue)
 
+# Microcontroller Disk UART (Cmod A7 DIP Pins 6 and 7)
+set_property -dict { PACKAGE_PIN H1  IOSTANDARD LVCMOS33 PULLUP true } [get_ports { mcu_rx }]; # DIP Pin 6
+set_property -dict { PACKAGE_PIN A15 IOSTANDARD LVCMOS33 }             [get_ports { mcu_tx }]; # DIP Pin 7
+
 # External 512KB Static RAM (ISSI IS61WV5128BLL-10BLI) Control Signals
 set_property -dict { PACKAGE_PIN N19 IOSTANDARD LVCMOS33 } [get_ports { RamCEn }]; # Sch=sram-ce
 set_property -dict { PACKAGE_PIN P19 IOSTANDARD LVCMOS33 } [get_ports { RamOEn }]; # Sch=sram-oe

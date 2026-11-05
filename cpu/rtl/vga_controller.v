@@ -11,7 +11,7 @@ module vga_controller (
     // 0. Clock divider: Generate 25 MHz enable pulse from 100 MHz CLK (divide by 4)
     reg [1:0] clk_div_cnt;
     wire clk_25mhz_en = (clk_div_cnt == 2'b11);
-    always @(posedge CLK) begin
+    always @(posedge CLK or posedge RESET) begin
         if (RESET) begin
             clk_div_cnt <= 2'b00;
         end else begin
@@ -23,7 +23,7 @@ module vga_controller (
     reg [9:0] h_count;
     reg [9:0] v_count;
 
-    always @(posedge CLK) begin
+    always @(posedge CLK or posedge RESET) begin
         if (RESET) begin
             h_count <= 0;
             v_count <= 0;
@@ -38,7 +38,7 @@ module vga_controller (
     end
 
     // 2. Sync signals (standard negative polarity)
-    always @(posedge CLK) begin
+    always @(posedge CLK or posedge RESET) begin
         if (RESET) begin
             hsync <= 1'b1;
             vsync <= 1'b1;
@@ -61,7 +61,7 @@ module vga_controller (
     reg [5:0] game_y;
 
     // Horizontal pixel repeater (repeats each 64-grid pixel 7 times)
-    always @(posedge CLK) begin
+    always @(posedge CLK or posedge RESET) begin
         if (RESET) begin
             h_repeat <= 3'd0;
             game_x   <= 6'd0;
@@ -84,7 +84,7 @@ module vga_controller (
     end
 
     // Vertical line repeater (repeats each 64-grid line 7 times)
-    always @(posedge CLK) begin
+    always @(posedge CLK or posedge RESET) begin
         if (RESET) begin
             v_repeat <= 3'd0;
             game_y   <= 6'd0;
@@ -117,8 +117,11 @@ module vga_controller (
     reg [4:0] bit_index_d1;
     reg       active_d1;
 
-    always @(posedge CLK) begin
-        if (clk_25mhz_en) begin
+    always @(posedge CLK or posedge RESET) begin
+        if (RESET) begin
+            bit_index_d1 <= 5'd0;
+            active_d1    <= 1'b0;
+        end else if (clk_25mhz_en) begin
             bit_index_d1 <= game_x[4:0];
             active_d1    <= game_active;
         end
@@ -127,7 +130,7 @@ module vga_controller (
     wire pixel_on = vram_data[bit_index_d1];
 
     // 6. RGB Output
-    always @(posedge CLK) begin
+    always @(posedge CLK or posedge RESET) begin
         if (RESET) begin
             rgb <= 3'b000;
         end else if (clk_25mhz_en) begin

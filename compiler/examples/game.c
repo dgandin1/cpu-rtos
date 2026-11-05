@@ -24,7 +24,7 @@ int main() {
 
     display_rect(ball_x, ball_y, 2, 2);
     display_rect(48, paddle_y, 2, 10);
-    pit_ldvalue(__long__(50000));
+    pit_ldvalue(__long__(2500000));
     
 }
 
@@ -52,9 +52,7 @@ void IRQ_handler() {
             ball_vel_y = mul(ball_vel_y, -1);
         }
         if (ball_x > 62) {
-            while (1 == 1) {
-
-            }
+            ball_vel_x = mul(ball_vel_x, -1);
         }
         display_rect(ball_x, ball_y, 2, 2);
         display_rect(48, paddle_y, 2, 10);

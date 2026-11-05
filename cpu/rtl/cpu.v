@@ -10,7 +10,9 @@ module cpu(
     MemDB,
     RamCEn,
     RamOEn,
-    RamWEn
+    RamWEn,
+    mcu_rx,
+    mcu_tx
 );
 
     input CLK;
@@ -18,6 +20,8 @@ module cpu(
     wire [3:0] IRQ_in; // address of current interrupt (zero if no interrupt)
     input key_w;
     input key_s;
+    input mcu_rx;
+    output mcu_tx;
 
     assign IRQ_in[1] = key_w;
     assign IRQ_in[2] = key_s;
@@ -114,9 +118,17 @@ module cpu(
         .PC(PC_current)
     );
 
-    iram instruction_memory (
+    wire [31:0] iram_data_out;
+
+    iram #(.WORDS(4096)) instruction_memory (
+        .CLK         (CLK),
         .FETCH_ADDR  (PC_current),         // PC points here
-        .INSTRUCTION (Iin) // Outputs the raw 32-bit token
+        .INSTRUCTION (Iin),                // Outputs the raw 32-bit token
+        .PORT_B_EN   (is_iram_data && (ex_mem_md || ex_mem_mw)),
+        .PORT_B_WE   (ex_mem_mw),
+        .PORT_B_ADDR (ex_mem_alu_out - 32'h0008_0000),
+        .PORT_B_WDATA(ex_mem_data_b),
+        .PORT_B_RDATA(iram_data_out)
     );
 
     
@@ -162,19 +174,28 @@ module cpu(
     );
 
     // MEMORY HIERARCHY & ADDRESS DECODING
-    // 0..999: On-chip BRAM (data_memory, including VRAM at 101..228)
-    // 1000..0x0007_FFFF: 512 KB External SRAM (via 32 KB L1 Data Cache)
-    // 0xFFFF_FFF0..0xFFFF_FFFF: MMIO (PIT timer at 0xFFFFFFFA)
-    wire is_mmio               = (ex_mem_alu_out == 32'hFFFF_FFFA);
+    // 0..999:                   On-chip BRAM DRAM (including VRAM at 101..228)
+    // 1000..0x0007_FFFF:        512 KB External SRAM (via 32 KB L1 Data Cache)
+    // 0x0008_0000..0x0008_0FFF: On-chip BRAM IRAM Port B (16 KB / 4096 instructions)
+    // 0xFFFF_FFB0..0xFFFF_FFB8: Microcontroller Disk MMIO (FIFO Data / Status)
+    // 0xFFFF_FFFA:              PIT Timer MMIO
+    wire is_pit_mmio           = (ex_mem_alu_out == 32'hFFFF_FFFA);
+    wire is_disk_mmio          = (ex_mem_alu_out >= 32'hFFFF_FFB0 && ex_mem_alu_out <= 32'hFFFF_FFB8);
+    wire is_mmio               = is_pit_mmio || is_disk_mmio;
     wire is_vram_or_scratchpad = (ex_mem_alu_out < 32'd1000);
-    wire is_sram_cache         = !is_mmio && !is_vram_or_scratchpad && (ex_mem_md || ex_mem_mw);
+    wire is_iram_data          = (ex_mem_alu_out >= 32'h0008_0000 && ex_mem_alu_out < 32'h0008_1000);
+    wire is_sram_cache         = !is_mmio && !is_vram_or_scratchpad && !is_iram_data && (ex_mem_md || ex_mem_mw);
 
     wire [31:0] dram_data_out;
     wire [31:0] cache_data_out;
+    wire [31:0] disk_data_out;
     wire        cache_stall;
     wire        cache_ready;
 
-    wire [31:0] mem_stage_data_out = (is_vram_or_scratchpad) ? dram_data_out : cache_data_out;
+    wire [31:0] mem_stage_data_out = (is_vram_or_scratchpad) ? dram_data_out :
+                                     (is_iram_data)          ? iram_data_out :
+                                     (is_disk_mmio)          ? disk_data_out :
+                                                               cache_data_out;
 
     dram data_memory (
         .CLK(CLK),
@@ -375,6 +396,24 @@ module cpu(
         .OUT(IRQ_in[3])
     );
 
+    mcu_disk #(
+        .CLK_FREQ_HZ(100_000_000),
+        .BAUD_RATE  (115_200),
+        .FIFO_DEPTH (64)
+    ) disk_controller (
+        .CLK            (CLK),
+        .RESET          (RESET),
+        .req            (is_disk_mmio && (ex_mem_md || ex_mem_mw)),
+        .we             (ex_mem_mw),
+        .addr           (ex_mem_alu_out),
+        .wdata          (ex_mem_data_b),
+        .rdata          (disk_data_out),
+        .mcu_rx         (mcu_rx),
+        .mcu_tx         (mcu_tx),
+        .sim_inject_en  (1'b0),
+        .sim_inject_data(32'd0)
+    );
+
     // PIPELINING
 
     // INSTRUCTION FETCH STAGE
@@ -514,6 +553,8 @@ module cpu(
     reg        mem_wb_md;
     reg        mem_wb_ld;
     reg        mem_wb_is_sram;
+    reg        mem_wb_is_iram;
+    reg        mem_wb_is_disk;
 
     always @(posedge CLK or posedge RESET) begin
         if (RESET) begin
@@ -523,6 +564,8 @@ module cpu(
             mem_wb_md       <= 1'b0;
             mem_wb_ld       <= 1'b0;
             mem_wb_is_sram  <= 1'b0;
+            mem_wb_is_iram  <= 1'b0;
+            mem_wb_is_disk  <= 1'b0;
         end else if (cache_stall) begin
             mem_wb_ld       <= 1'b0;
             mem_wb_md       <= 1'b0;
@@ -533,12 +576,17 @@ module cpu(
             mem_wb_md       <= ex_mem_md;
             mem_wb_ld       <= ex_mem_ld;
             mem_wb_is_sram  <= is_sram_cache;
+            mem_wb_is_iram  <= is_iram_data;
+            mem_wb_is_disk  <= is_disk_mmio;
         end
     end
 
     // WRITEBACK STAGE
 
-    wire [31:0] wb_mem_data = (mem_wb_is_sram) ? cache_data_out : dram_data_out;
+    wire [31:0] wb_mem_data = (mem_wb_is_sram) ? cache_data_out :
+                              (mem_wb_is_iram) ? iram_data_out  :
+                              (mem_wb_is_disk) ? disk_data_out  :
+                                                 dram_data_out;
     assign D_in = (mem_wb_md) ? wb_mem_data : mem_wb_alu_out;
 
 

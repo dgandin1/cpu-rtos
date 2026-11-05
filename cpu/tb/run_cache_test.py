@@ -24,6 +24,7 @@ def run_cache_tests():
         proj_dir / "vga_controller.v",
         proj_dir / "sram.v",
         proj_dir / "cache_controller.v",
+        proj_dir / "mcu_disk.v",
         proj_dir / "cpu.v",
         tb_dir   / "sram_model.v",
         tb_dir   / "cpu_tb_top.v",

@@ -1,6 +1,8 @@
 module cache_controller #(
     parameter INDEX_BITS = 11, // 11 = 32 KB (2048 lines), 12 = 64 KB (4096 lines)
+    /* verilator lint_off UNUSEDPARAM */
     parameter LINE_BYTES = 16  // 16 bytes = 4 words per cache line
+    /* verilator lint_on UNUSEDPARAM */
 )(
     // Clock & Reset
     input  wire        CLK,

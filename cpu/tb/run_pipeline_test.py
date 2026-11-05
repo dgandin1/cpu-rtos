@@ -23,6 +23,7 @@ def run_pipeline_tests():
         proj_dir / "vga_controller.v",
         proj_dir / "sram.v",
         proj_dir / "cache_controller.v",
+        proj_dir / "mcu_disk.v",
         proj_dir / "cpu.v",
     ]
 

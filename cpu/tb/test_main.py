@@ -38,7 +38,7 @@ async def test_cpu_hex_file_execution(dut):
             pass
     await ClockCycles(dut.CLK, 1)
     dut._log.info("FINAL OUTPUT LCD:")
-    dut.data_memory.ADDR.value = 0x00000001
+    dut.data_memory.ADDR_A.value = 0x00000001
     mem_val = dut.data_memory.mem[1].value.to_unsigned()
     dut._log.info(mem_val)
             

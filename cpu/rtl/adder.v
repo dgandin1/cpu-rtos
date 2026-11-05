@@ -6,7 +6,7 @@ module adder(A, B, CI, Y, C, V);
     output C, V;
 
     // Use a 33-bit intermediate calculation to capture the carry out naturally
-    wire [32:0] sum_ext = A + B + CI;
+    wire [32:0] sum_ext = {1'b0, A} + {1'b0, B} + {{32{1'b0}}, CI};
 
     assign Y = sum_ext[31:0];
     assign C = sum_ext[32];

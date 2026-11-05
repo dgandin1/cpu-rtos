@@ -9,6 +9,8 @@ module cpu_tb_top (
     input  wire       RESET,
     input  wire       key_w,
     input  wire       key_s,
+    input  wire       mcu_rx,
+    output wire       mcu_tx,
     output wire       hsync,
     output wire       vsync,
     output wire [2:0] rgb
@@ -34,7 +36,9 @@ module cpu_tb_top (
         .MemDB  (MemDB),
         .RamCEn (RamCEn),
         .RamOEn (RamOEn),
-        .RamWEn (RamWEn)
+        .RamWEn (RamWEn),
+        .mcu_rx (mcu_rx),
+        .mcu_tx (mcu_tx)
     );
 
     // Off-chip 512 KB ISSI SRAM behavioral model

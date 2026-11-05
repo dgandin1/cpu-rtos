@@ -1,6 +1,8 @@
 module cmod_top (
     input clk_12mhz,
     input [1:0] btn,
+    input mcu_rx,
+    output mcu_tx,
     output hsync,
     output vsync,
     output [2:0] rgb,
@@ -22,7 +24,18 @@ module cmod_top (
         .locked(locked)
     );
 
-    wire sys_reset = ~locked | btn[0];
+    // 3-Stage Reset Synchronizer:
+    // Asserts asynchronously immediately on PLL unlock or btn[0] press.
+    // Deasserts cleanly on rising edge of CLK to prevent setup/removal race conditions.
+    wire raw_reset = ~locked | btn[0];
+    reg [2:0] rst_sync;
+    always @(posedge CLK or posedge raw_reset) begin
+        if (raw_reset)
+            rst_sync <= 3'b111;
+        else
+            rst_sync <= {rst_sync[1:0], 1'b0};
+    end
+    wire sys_reset = rst_sync[2];
 
     wire debounce_button;
 
@@ -38,7 +51,9 @@ module cmod_top (
         .MemDB(MemDB),
         .RamCEn(RamCEn),
         .RamOEn(RamOEn),
-        .RamWEn(RamWEn)
+        .RamWEn(RamWEn),
+        .mcu_rx(mcu_rx),
+        .mcu_tx(mcu_tx)
     );
 
     btn_debounce u_btn_debounce (

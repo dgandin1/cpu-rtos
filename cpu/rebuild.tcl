@@ -4,9 +4,26 @@
 
 open_project ./vivado_build/cmod_s7_vga.xpr
 
+# Ensure clk_wiz_0 is configured to 100 MHz
+set clk_wiz [get_ips clk_wiz_0]
+if {$clk_wiz ne ""} {
+    set cur_freq [get_property CONFIG.CLKOUT1_REQUESTED_OUT_FREQ $clk_wiz]
+    if {$cur_freq != "100.000"} {
+        puts ">>> Updating clk_wiz_0 to 100 MHz..."
+        set_property CONFIG.CLKOUT1_REQUESTED_OUT_FREQ 100.000 $clk_wiz
+        generate_target all $clk_wiz
+        reset_run clk_wiz_0_synth_1
+        launch_runs clk_wiz_0_synth_1 -jobs 4
+        wait_on_run clk_wiz_0_synth_1
+    }
+}
+
 # Ensure all Verilog files in rtl/ (including cache_controller.v and sram.v) are added
 add_files -norecurse [glob -nocomplain ./rtl/*.v]
 update_compile_order -fileset sources_1
+
+# Use Performance strategy with post-route physical optimization for 100 MHz timing margin
+catch {set_property strategy Performance_ExplorePostRoutePhysOpt [get_runs impl_1]}
 
 # Reset top-level synthesis run
 reset_run synth_1
