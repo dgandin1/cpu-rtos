@@ -3,11 +3,11 @@ module sram (
     input  wire        CLK,
     input  wire        RESET,
 
-    // CPU / Cache Subsystem Interface
+    // CPU / Cache Subsystem Interface (Word-Addressed)
     input  wire        req,            // 1-cycle transaction request
     input  wire        we,             // 0 = Read, 1 = Write
     input  wire [3:0]  byte_en,        // Byte enables (4'b1111 for full 32-bit word)
-    input  wire [31:0] addr_in,        // 32-bit address
+    input  wire [31:0] addr_in,        // 32-bit word address
     input  wire [31:0] data_in,        // 32-bit write data
     output reg  [31:0] data_out,       // 32-bit read data
     output reg         data_rdy,       // 1-cycle active-high completion strobe
@@ -84,14 +84,14 @@ module sram (
                     cycle_phase <= 1'b0;
 
                     if (req) begin
-                        base_addr   <= addr_in[18:0] & ~19'd3; // 4-byte align
+                        base_addr   <= {addr_in[16:0], 2'b00}; // Map 17-bit word address (128K words) to 19-bit byte address (word * 4)
                         wdata       <= data_in;
                         latched_be  <= actual_be;
                         is_we       <= we;
                         state       <= STATE_ACCESS;
 
                         // Start Byte 0 setup immediately
-                        MemAdr <= addr_in[18:0] & ~19'd3;
+                        MemAdr <= {addr_in[16:0], 2'b00};
                         RamCEn <= 1'b0; // Select SRAM chip
                         if (we) begin
                             RamOEn <= 1'b1;

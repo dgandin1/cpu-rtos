@@ -30,13 +30,13 @@ module cache_controller #(
 );
 
     // -------------------------------------------------------------------------
-    // Cache Geometry Calculations
+    // Cache Geometry Calculations (Word-Addressed Architecture)
     // -------------------------------------------------------------------------
-    localparam NUM_LINES   = (1 << INDEX_BITS);             // 2048 lines for 32 KB
-    localparam OFFSET_BITS = 4;                             // 16-byte line
-    localparam TAG_BITS    = 32 - INDEX_BITS - OFFSET_BITS; // 17 bits for 32 KB
-    localparam EPOCH_BITS  = 8;                             // 8-bit flash invalidation epoch
-    localparam ENTRY_BITS  = TAG_BITS + EPOCH_BITS;         // 25 bits total per tag entry
+    localparam NUM_LINES    = (1 << INDEX_BITS);              // 2048 lines for 32 KB (8192 words)
+    localparam OFFSET_WORDS = 2;                              // 4 words (16 bytes) per cache line (2 bits)
+    localparam TAG_BITS     = 32 - INDEX_BITS - OFFSET_WORDS; // 19 bits for 32 KB
+    localparam EPOCH_BITS   = 8;                              // 8-bit flash invalidation epoch
+    localparam ENTRY_BITS   = TAG_BITS + EPOCH_BITS;          // 27 bits total per tag entry
 
     // -------------------------------------------------------------------------
     // BRAM Storage for Cache Data (4 Banks of 32-bit words = 16 bytes per line)
@@ -68,10 +68,10 @@ module cache_controller #(
         end
     end
 
-    // Address Decoding
-    wire [INDEX_BITS-1:0] cpu_index = cpu_addr[OFFSET_BITS +: INDEX_BITS];
+    // Address Decoding (Strictly Word-Addressed: 1 address = 1 32-bit word)
+    wire [INDEX_BITS-1:0] cpu_index = cpu_addr[OFFSET_WORDS +: INDEX_BITS];
     wire [TAG_BITS-1:0]   cpu_tag   = cpu_addr[31 -: TAG_BITS];
-    wire [1:0]            cpu_word  = cpu_addr[3:2];
+    wire [1:0]            cpu_word  = cpu_addr[1:0];
 
     wire [ENTRY_BITS-1:0] tag_dout  = tag_mem[cpu_index];
     wire                  tag_match = (tag_dout == {cache_epoch, cpu_tag});
@@ -235,7 +235,7 @@ module cache_controller #(
                         sram_req     <= 1'b1;
                         sram_we      <= 1'b0;
                         sram_byte_en <= 4'b1111;
-                        sram_addr    <= {miss_tag, miss_index, refill_word_idx, 2'b00};
+                        sram_addr    <= {miss_tag, miss_index, refill_word_idx};
                         state        <= S_REFILL_WAIT;
                     end
                 end
@@ -277,7 +277,7 @@ module cache_controller #(
                         sram_req     <= 1'b1;
                         sram_we      <= 1'b1;
                         sram_byte_en <= (cpu_byte_en == 4'b0000) ? 4'b1111 : cpu_byte_en;
-                        sram_addr    <= {cpu_addr[31:2], 2'b00};
+                        sram_addr    <= cpu_addr;
                         sram_wdata   <= cpu_wdata;
 
                         // If line is valid in cache, update BRAM

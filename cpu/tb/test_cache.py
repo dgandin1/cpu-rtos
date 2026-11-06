@@ -60,12 +60,12 @@ async def test_cache_write_through(dut):
     await ClockCycles(dut.CLK, 30)
     await FallingEdge(dut.CLK)
 
-    b0 = int(dut.u_sram.mem[1024].value)
-    b1 = int(dut.u_sram.mem[1025].value)
-    b2 = int(dut.u_sram.mem[1026].value)
-    b3 = int(dut.u_sram.mem[1027].value)
-    dut._log.info(f"SRAM @ 1024..1027: {b0:02x} {b1:02x} {b2:02x} {b3:02x}")
-    assert b0 == 85, f"Expected 85 at SRAM[1024], got {b0}"
+    b0 = int(dut.u_sram.mem[4096].value)
+    b1 = int(dut.u_sram.mem[4097].value)
+    b2 = int(dut.u_sram.mem[4098].value)
+    b3 = int(dut.u_sram.mem[4099].value)
+    dut._log.info(f"SRAM @ 4096..4099: {b0:02x} {b1:02x} {b2:02x} {b3:02x}")
+    assert b0 == 85, f"Expected 85 at SRAM[4096], got {b0}"
     assert b1 == 0 and b2 == 0 and b3 == 0
 
 
@@ -83,17 +83,17 @@ async def test_cache_cold_miss_and_refill(dut):
 
     await hold_in_reset(dut)
 
-    # Preload SRAM at 1040: 0x11223344 (LE: 44 33 22 11)
-    dut.u_sram.mem[1040].value = 0x44
-    dut.u_sram.mem[1041].value = 0x33
-    dut.u_sram.mem[1042].value = 0x22
-    dut.u_sram.mem[1043].value = 0x11
+    # Preload SRAM at Word 1040 (Physical byte: 1040 * 4 = 4160): 0x11223344 (LE: 44 33 22 11)
+    dut.u_sram.mem[4160].value = 0x44
+    dut.u_sram.mem[4161].value = 0x33
+    dut.u_sram.mem[4162].value = 0x22
+    dut.u_sram.mem[4163].value = 0x11
 
-    # Word 1 (1044): 0x55667788
-    dut.u_sram.mem[1044].value = 0x88
-    dut.u_sram.mem[1045].value = 0x77
-    dut.u_sram.mem[1046].value = 0x66
-    dut.u_sram.mem[1047].value = 0x55
+    # Word 1 (1041, Physical byte: 1041 * 4 = 4164): 0x55667788
+    dut.u_sram.mem[4164].value = 0x88
+    dut.u_sram.mem[4165].value = 0x77
+    dut.u_sram.mem[4166].value = 0x66
+    dut.u_sram.mem[4167].value = 0x55
 
     await release_reset(dut)
 
@@ -165,7 +165,7 @@ async def test_cache_read_hit_single_cycle(dut):
 
 @cocotb.test()
 async def test_cache_spatial_locality(dut):
-    """Test 4: Refilling line 1056 brings all 4 words (1056, 1060, 1064, 1068) into cache; subsequent words hit with 0 stalls."""
+    """Test 4: Refilling line 1056 brings all 4 words (1056, 1057, 1058, 1059) into cache; subsequent words hit with 0 stalls."""
     cocotb.start_soon(Clock(dut.CLK, 10, unit="ns").start())
 
     for i in range(1024):
@@ -173,32 +173,32 @@ async def test_cache_spatial_locality(dut):
 
     dut.u_cpu.instruction_memory.mem[0].value = encode_addi(rd=1, rs1=0, imm12=1056)
     dut.u_cpu.instruction_memory.mem[1].value = encode_lw(rd=2, rs1=1, imm12=0)
-    dut.u_cpu.instruction_memory.mem[2].value = encode_lw(rd=3, rs1=1, imm12=4)
-    dut.u_cpu.instruction_memory.mem[3].value = encode_lw(rd=4, rs1=1, imm12=8)
-    dut.u_cpu.instruction_memory.mem[4].value = encode_lw(rd=5, rs1=1, imm12=12)
+    dut.u_cpu.instruction_memory.mem[2].value = encode_lw(rd=3, rs1=1, imm12=1)
+    dut.u_cpu.instruction_memory.mem[3].value = encode_lw(rd=4, rs1=1, imm12=2)
+    dut.u_cpu.instruction_memory.mem[4].value = encode_lw(rd=5, rs1=1, imm12=3)
 
     await hold_in_reset(dut)
 
-    # Preload the 4 words of line 1056 in SRAM while held in reset
-    dut.u_sram.mem[1056].value = 100
-    dut.u_sram.mem[1057].value = 0
-    dut.u_sram.mem[1058].value = 0
-    dut.u_sram.mem[1059].value = 0
+    # Preload the 4 words of line 1056 in SRAM (Physical bytes 4224..4239)
+    dut.u_sram.mem[4224].value = 100
+    dut.u_sram.mem[4225].value = 0
+    dut.u_sram.mem[4226].value = 0
+    dut.u_sram.mem[4227].value = 0
 
-    dut.u_sram.mem[1060].value = 200
-    dut.u_sram.mem[1061].value = 0
-    dut.u_sram.mem[1062].value = 0
-    dut.u_sram.mem[1063].value = 0
+    dut.u_sram.mem[4228].value = 200
+    dut.u_sram.mem[4229].value = 0
+    dut.u_sram.mem[4230].value = 0
+    dut.u_sram.mem[4231].value = 0
 
-    dut.u_sram.mem[1064].value = 50
-    dut.u_sram.mem[1065].value = 0
-    dut.u_sram.mem[1066].value = 0
-    dut.u_sram.mem[1067].value = 0
+    dut.u_sram.mem[4232].value = 50
+    dut.u_sram.mem[4233].value = 0
+    dut.u_sram.mem[4234].value = 0
+    dut.u_sram.mem[4235].value = 0
 
-    dut.u_sram.mem[1068].value = 75
-    dut.u_sram.mem[1069].value = 0
-    dut.u_sram.mem[1070].value = 0
-    dut.u_sram.mem[1071].value = 0
+    dut.u_sram.mem[4236].value = 75
+    dut.u_sram.mem[4237].value = 0
+    dut.u_sram.mem[4238].value = 0
+    dut.u_sram.mem[4239].value = 0
 
     await release_reset(dut)
 
@@ -242,22 +242,20 @@ async def test_cache_eviction_and_replacement(dut):
     for i in range(1024):
         dut.u_cpu.instruction_memory.mem[i].value = NOP
 
-    # Addr A = 1024 (line index 64)
-    # Addr B = 1024 + 32768 = 33792 (same line index 64, tag differs by 1)
+    # Addr A = 1024 (line index 256)
+    # Addr B = 1024 + 8192 = 9216 (same line index 256, tag differs by 1)
     dut.u_cpu.instruction_memory.mem[0].value  = encode_addi(rd=1, rs1=0, imm12=1024)
     dut.u_cpu.instruction_memory.mem[1].value  = encode_addi(rd=11, rs1=0, imm12=1024)
     dut.u_cpu.instruction_memory.mem[2].value  = encode_add(rd=11, rs1=11, rs2=11) # 2048
     dut.u_cpu.instruction_memory.mem[3].value  = encode_add(rd=11, rs1=11, rs2=11) # 4096
     dut.u_cpu.instruction_memory.mem[4].value  = encode_add(rd=11, rs1=11, rs2=11) # 8192
-    dut.u_cpu.instruction_memory.mem[5].value  = encode_add(rd=11, rs1=11, rs2=11) # 16384
-    dut.u_cpu.instruction_memory.mem[6].value  = encode_add(rd=11, rs1=11, rs2=11) # 32768
-    dut.u_cpu.instruction_memory.mem[7].value  = encode_add(rd=10, rs1=1, rs2=11)  # 33792
-    dut.u_cpu.instruction_memory.mem[8].value  = encode_addi(rd=2, rs1=0, imm12=77)
-    dut.u_cpu.instruction_memory.mem[9].value  = encode_addi(rd=3, rs1=0, imm12=99)
-    dut.u_cpu.instruction_memory.mem[10].value = encode_sw(rs2=2, rs1=1, imm12=0)   # Store 77 to 1024
-    dut.u_cpu.instruction_memory.mem[11].value = encode_sw(rs2=3, rs1=10, imm12=0)  # Store 99 to 33792
-    dut.u_cpu.instruction_memory.mem[12].value = encode_lw(rd=20, rs1=10, imm12=0) # Load 33792 -> should get 99
-    dut.u_cpu.instruction_memory.mem[13].value = encode_lw(rd=21, rs1=1, imm12=0)  # Load 1024 -> evicted, refetches 77!
+    dut.u_cpu.instruction_memory.mem[5].value  = encode_add(rd=10, rs1=1, rs2=11)  # 9216
+    dut.u_cpu.instruction_memory.mem[6].value  = encode_addi(rd=2, rs1=0, imm12=77)
+    dut.u_cpu.instruction_memory.mem[7].value  = encode_addi(rd=3, rs1=0, imm12=99)
+    dut.u_cpu.instruction_memory.mem[8].value  = encode_sw(rs2=2, rs1=1, imm12=0)   # Store 77 to 1024
+    dut.u_cpu.instruction_memory.mem[9].value  = encode_sw(rs2=3, rs1=10, imm12=0)  # Store 99 to 9216
+    dut.u_cpu.instruction_memory.mem[10].value = encode_lw(rd=20, rs1=10, imm12=0) # Load 9216 -> should get 99
+    dut.u_cpu.instruction_memory.mem[11].value = encode_lw(rd=21, rs1=1, imm12=0)  # Load 1024 -> evicted, refetches 77!
 
     await hold_in_reset(dut)
     await release_reset(dut)

@@ -173,14 +173,14 @@ module cpu(
         .Z(Z)
     );
 
-    // MEMORY HIERARCHY & ADDRESS DECODING
-    // 0..999:                   On-chip BRAM DRAM (including VRAM at 101..228)
-    // 1000..0x0007_FFFF:        512 KB External SRAM (via 32 KB L1 Data Cache)
-    // 0x0008_0000..0x0008_0FFF: On-chip BRAM IRAM Port B (16 KB / 4096 instructions)
-    // 0xFFFF_FFB0..0xFFFF_FFB8: Microcontroller Disk MMIO (FIFO Data / Status)
+    // MEMORY HIERARCHY & ADDRESS DECODING (ALL WORD-ADDRESSED: 1 address = 1 32-bit word)
+    // 0..999:                   On-chip BRAM DRAM (including VRAM at 101..228) (1000 words = 4 KB)
+    // 1000..0x0001_FFFF:        512 KB External SRAM (via 32 KB L1 Data Cache) (131,072 words = 512 KB)
+    // 0x0008_0000..0x0008_0FFF: On-chip BRAM IRAM Port B (4096 words = 16 KB)
+    // 0xFFFF_FFB0..0xFFFF_FFB2: Microcontroller Disk MMIO (FIFO Status / Data / Ctrl)
     // 0xFFFF_FFFA:              PIT Timer MMIO
     wire is_pit_mmio           = (ex_mem_alu_out == 32'hFFFF_FFFA);
-    wire is_disk_mmio          = (ex_mem_alu_out >= 32'hFFFF_FFB0 && ex_mem_alu_out <= 32'hFFFF_FFB8);
+    wire is_disk_mmio          = (ex_mem_alu_out >= 32'hFFFF_FFB0 && ex_mem_alu_out <= 32'hFFFF_FFB2);
     wire is_mmio               = is_pit_mmio || is_disk_mmio;
     wire is_vram_or_scratchpad = (ex_mem_alu_out < 32'd1000);
     wire is_iram_data          = (ex_mem_alu_out >= 32'h0008_0000 && ex_mem_alu_out < 32'h0008_1000);

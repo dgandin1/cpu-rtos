@@ -9,11 +9,11 @@
 //     - Bit 2:    TX_BUSY  (1 if UART transmitter is sending a byte)
 //     - Bits 15:8 Words available in RX FIFO (0 to 64)
 //
-//   0xFFFF_FFB4: DISK_DATA (Read / Write)
+//   0xFFFF_FFB1: DISK_DATA (Read / Write)
 //     - READ:  Pops and returns the next 32-bit instruction/data word from FIFO
 //     - WRITE: Transmits wdata[7:0] to the external microcontroller via mcu_tx
 //
-//   0xFFFF_FFB8: DISK_CTRL (Write-Only)
+//   0xFFFF_FFB2: DISK_CTRL (Write-Only)
 //     - WRITE 1: Flushes and resets the RX FIFO
 
 module mcu_disk #(
@@ -27,7 +27,7 @@ module mcu_disk #(
     // Bus Interface from CPU EX/MEM Stage
     input  wire        req,       // Active when address matches DISK MMIO
     input  wire        we,        // 1 = Write, 0 = Read
-    input  wire [31:0] addr,      // 0xFFFF_FFB0, 0xFFFF_FFB4, 0xFFFF_FFB8
+    input  wire [31:0] addr,      // 0xFFFF_FFB0, 0xFFFF_FFB1, 0xFFFF_FFB2
     input  wire [31:0] wdata,     // Write data from CPU (ex_mem_data_b)
     output reg  [31:0] rdata,     // Read data to CPU writeback stage
 
@@ -177,8 +177,8 @@ module mcu_disk #(
     wire fifo_push = (word_ready_to_push || sim_inject_en) && (fifo_count < FIFO_DEPTH);
     wire [31:0] fifo_push_data = sim_inject_en ? sim_inject_data : word_to_push;
     
-    // Read from FIFO happens when CPU reads 0xFFFF_FFB4
-    wire fifo_pop = req && !we && (addr == 32'hFFFF_FFB4) && (fifo_count > 0);
+    // Read from FIFO happens when CPU reads 0xFFFF_FFB1
+    wire fifo_pop = req && !we && (addr == 32'hFFFF_FFB1) && (fifo_count > 0);
 
     // Dedicated RAM write logic (completely independent of CPU flush/req path)
     always @(posedge CLK) begin
@@ -192,7 +192,7 @@ module mcu_disk #(
             wr_ptr     <= 6'd0;
             rd_ptr     <= 6'd0;
             fifo_count <= 7'd0;
-        end else if (req && we && (addr == 32'hFFFF_FFB8) && wdata[0]) begin
+        end else if (req && we && (addr == 32'hFFFF_FFB2) && wdata[0]) begin
             // DISK_CTRL write 1: Flush FIFO
             wr_ptr     <= 6'd0;
             rd_ptr     <= 6'd0;
@@ -228,7 +228,7 @@ module mcu_disk #(
     reg [7:0]  tx_shift_reg;
     reg        tx_busy;
 
-    wire tx_start_req = req && we && (addr == 32'hFFFF_FFB4) && !tx_busy;
+    wire tx_start_req = req && we && (addr == 32'hFFFF_FFB1) && !tx_busy;
 
     always @(posedge CLK or posedge RESET) begin
         if (RESET) begin
@@ -311,7 +311,7 @@ module mcu_disk #(
         end else if (req && !we) begin
             case (addr)
                 32'hFFFF_FFB0: rdata <= status_word;
-                32'hFFFF_FFB4: rdata <= (fifo_count > 0) ? fifo_mem[rd_ptr] : 32'd0;
+                32'hFFFF_FFB1: rdata <= (fifo_count > 0) ? fifo_mem[rd_ptr] : 32'd0;
                 default:       rdata <= 32'd0;
             endcase
         end
