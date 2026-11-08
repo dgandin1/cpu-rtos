@@ -13,3 +13,4 @@ cpu/vivado_build/
 __pycache__/
 compiler/__pycache__/
 comiler/__pycache__/
+mcu/build/
