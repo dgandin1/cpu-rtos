@@ -254,3 +254,159 @@ async def test_dynamic_program_loader(dut):
     dut._log.info(f"Dynamic execution result: r8 = {r8_val} (exp 444)")
     assert r8_val == 444, f"Expected r8 == 444 from dynamically executed code, got {r8_val}"
 
+async def recv_uart_byte(dut):
+    # Wait for falling edge of mcu_tx (start bit)
+    while dut.mcu_tx.value == 1:
+        await RisingEdge(dut.CLK)
+    # Wait 1.5 bit periods to center on bit 0
+    await ClockCycles(dut.CLK, int(CLKS_PER_BIT * 1.5))
+    byte_val = 0
+    for i in range(8):
+        byte_val |= (int(dut.mcu_tx.value) << i)
+        if i < 7:
+            await ClockCycles(dut.CLK, CLKS_PER_BIT)
+    # Wait to center of stop bit
+    await ClockCycles(dut.CLK, CLKS_PER_BIT)
+    # Wait through remainder of stop bit
+    await ClockCycles(dut.CLK, int(CLKS_PER_BIT * 0.6))
+    return byte_val
+
+@cocotb.test()
+async def test_bootloader_loads_pico_sector0_and_paints_vram(dut):
+    """Test 5: Stage 1 ROM loads Sector 0 (Stage 2 Loader). Stage 2 Loader loads Sectors 1-4 (Pong) and runs Pong."""
+    cocotb.start_soon(Clock(dut.CLK, 10, unit="ns").start())
+
+    # Read assembled ROM bootloader from program.hex (51 words, r14=128)
+    import os
+    import subprocess
+    from pathlib import Path
+    hex_path = Path(__file__).resolve().parent.parent / "rtl" / "program.hex"
+    with open(hex_path) as f:
+        hex_lines = [int(line.strip(), 16) for line in f if line.strip()]
+
+    for i in range(512):
+        if i < len(hex_lines):
+            dut.instruction_memory.mem[i].value = hex_lines[i]
+        else:
+            dut.instruction_memory.mem[i].value = NOP
+
+    await reset_cpu(dut)
+
+    # Prepare Sectors:
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+    from compiler.assembler import assemble
+    import tempfile
+    stage2_asm = [
+        "ADDI r15 r0 4",
+        "ADDI r3 r0 1",
+        "ADDI r4 r0 200",
+        "BEQ r0 r0 2",
+        "BEQ r0 r0 272",
+        "ADDI r5 r0 1024",
+        "ADD r5 r5 r5",
+        "ADD r5 r5 r5",
+        "ADD r5 r5 r5",
+        "ADD r5 r5 r5",
+        "ADD r5 r5 r5",
+        "ADD r5 r5 r5",
+        "ADD r5 r5 r5",
+        "ADD r5 r5 r5",
+        "ADD r5 r5 r5",
+        "ADD r5 r5 r4",
+        "ADDI r10 r0 -80",
+        "ADDI r8 r0 4",
+        "ADDI r6 r0 255",
+        "ADDI r9 r0 1",
+        "ADD r7 r0 r3",
+        "LW r11 r10 0",
+        "AND r13 r11 r8",
+        "BEQ r13 r8 -2",
+        "ADDI r12 r0 1",
+        "SW r12 r10 1",
+        "LW r11 r10 0",
+        "AND r13 r11 r8",
+        "BEQ r13 r8 -2",
+        "AND r12 r6 r7",
+        "SW r12 r10 1",
+        "ADDI r19 r0 8",
+        "BEQ r19 r0 4",
+        "SRL r7 r7 r0",
+        "ADDI r19 r19 -1",
+        "BEQ r0 r0 -3",
+        "LW r11 r10 0",
+        "AND r13 r11 r8",
+        "BEQ r13 r8 -2",
+        "AND r12 r6 r7",
+        "SW r12 r10 1",
+        "ADDI r14 r0 128",
+        "BEQ r14 r0 9",
+        "LW r11 r10 0",
+        "AND r13 r11 r9",
+        "BEQ r13 r0 -2",
+        "LW r12 r10 1",
+        "SW r12 r5 0",
+        "ADDI r5 r5 1",
+        "ADDI r14 r14 -1",
+        "BEQ r0 r0 -8",
+        "ADDI r3 r3 1",
+        "ADDI r15 r15 -1",
+        "BLT r0 r15 -33",
+        "JMP r4"
+    ]
+    with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
+        assemble(f.name, stage2_asm)
+        sector0 = [int(l.strip(), 16) for l in open(f.name) if l.strip()]
+    while len(sector0) < 128:
+        sector0.append(NOP)
+
+    git_hex = subprocess.check_output(["git", "show", "dcff6bc:cpu/rtl/program.hex"]).decode().splitlines()
+    pong_words = [int(h, 16) for h in git_hex if h.strip()]
+    while len(pong_words) < 512:
+        pong_words.append(NOP)
+
+    sectors = {
+        0: sector0,
+        1: pong_words[0:128],
+        2: pong_words[128:256],
+        3: pong_words[256:384],
+        4: pong_words[384:512]
+    }
+
+    # Simulate Pico serving 5 sector requests sequentially:
+    for req_idx in range(5):
+        cmd0 = await recv_uart_byte(dut)
+        cmd1 = await recv_uart_byte(dut)
+        cmd2 = await recv_uart_byte(dut)
+        sector_num = (cmd2 << 8) | cmd1
+        dut._log.info(f"MCU Emulator [{req_idx}]: Received CMD=0x{cmd0:02x}, Sector={sector_num}")
+        assert cmd0 == 0x01
+        assert sector_num in sectors
+
+        sec_data = sectors[sector_num]
+        for w in sec_data:
+            while int(dut.disk_controller.fifo_count.value) >= 60:
+                await ClockCycles(dut.CLK, 5)
+            await FallingEdge(dut.CLK)
+            wr = int(dut.disk_controller.wr_ptr.value)
+            dut.disk_controller.fifo_mem[wr].value = w
+            dut.disk_controller.wr_ptr.value = (wr + 1) % 64
+            dut.disk_controller.fifo_count.value = int(dut.disk_controller.fifo_count.value) + 1
+            await ClockCycles(dut.CLK, 12)
+
+    dut._log.info("MCU Emulator: All 5 sectors served! Waiting for Pong to initialize...")
+
+    # Wait for Pong main() to execute display_rect and initialize PIT timer
+    await ClockCycles(dut.CLK, 15000)
+    await FallingEdge(dut.CLK)
+
+    # Verify Ball and Paddle in VRAM:
+    vram_ball = int(dut.data_memory.mem[121].value)
+    vram_paddle = int(dut.data_memory.mem[150].value)
+    dut._log.info(f"VRAM[121] (ball row 10): 0x{vram_ball:08x}")
+    dut._log.info(f"VRAM[150] (paddle row 24): 0x{vram_paddle:08x}")
+    assert (vram_ball & 0x0C00) == 0x0C00, f"Expected ball bits at VRAM[121], got 0x{vram_ball:08x}"
+    assert (vram_paddle & 0x30000) == 0x30000, f"Expected paddle bits at VRAM[150], got 0x{vram_paddle:08x}"
+    dut._log.info("ALL Multi-sector boot & Pong assertions passed successfully!")
+
+

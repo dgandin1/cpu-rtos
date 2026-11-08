@@ -1,0 +1,1 @@
+cmd='/usr/bin/cmake;-DCMAKE_MAKE_PROGRAM:FILEPATH=/home/duke/Xilinx/2026.1/Vivado/bin/ninja;-DPICO_SDK_PATH:FILEPATH=/home/duke/dev/cpu-rtos/mcu/pico-sdk;-DUSE_PRECOMPILED:BOOL=true;-DUSE_MBEDTLS=0;-DPICO_DEBUG_INFO_IN_RELEASE=OFF;-GNinja;-S;<SOURCE_DIR><SOURCE_SUBDIR>;-B;<BINARY_DIR>'

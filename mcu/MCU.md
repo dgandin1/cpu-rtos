@@ -1,0 +1,1 @@
+This folder contains code to utilize an external RP2040 microcontroller as an external disk over the CPU's UART interface. The pico-sdk is a needed dependency. 

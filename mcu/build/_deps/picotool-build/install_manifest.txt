@@ -1,0 +1,6 @@
+/home/duke/dev/cpu-rtos/mcu/build/_deps/picotool/picotool
+/home/duke/dev/cpu-rtos/mcu/build/_deps/picotool/picotoolTargets.cmake
+/home/duke/dev/cpu-rtos/mcu/build/_deps/picotool/picotoolTargets-release.cmake
+/home/duke/dev/cpu-rtos/mcu/build/_deps/picotool/picotoolConfig.cmake
+/home/duke/dev/cpu-rtos/mcu/build/_deps/picotool/picotoolConfigVersion.cmake
+/home/duke/dev/cpu-rtos/mcu/build/_deps/picotool/enc_bootloader.elf

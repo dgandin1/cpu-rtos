@@ -42,9 +42,9 @@ def assemble(output_file, lines):
         elif line[0] == "sub":
             line_o = "0100000" + rtb(line[3]) + rtb(line[2]) + "000" + rtb(line[1]) + "0110011"
         elif line[0] == "sll": # Added your 1-bit software shift!
-            line_o = "0000000" + "000" + rtb(line[2]) + "001" + rtb(line[1]) + "0110011"
+            line_o = "0000000" + "00000" + rtb(line[2]) + "001" + rtb(line[1]) + "0110011"
         elif line[0] == "srl": 
-            line_o = "0000000" + "000" + rtb(line[2]) + "101" + rtb(line[1]) + "0110011"
+            line_o = "0000000" + "00000" + rtb(line[2]) + "101" + rtb(line[1]) + "0110011"
         elif line[0] == "or":
             line_o = "0000000" + rtb(line[3]) + rtb(line[2]) + "110" + rtb(line[1]) + "0110011"
         elif line[0] == "and":

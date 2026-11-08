@@ -1,6 +1,6 @@
 # aCPU
 
-A tiny modified RISC-V processor along with a minimal C compiler and RTOS. 
+A modified RISC-V processor along with a C compiler and RTOS. 
 
 ### Documentations
 
@@ -17,6 +17,7 @@ A tiny modified RISC-V processor along with a minimal C compiler and RTOS.
 |/tb  |Testbenches and simulations for CPU|
 |/compiler|C- compiler, assembler and related tools|
 |/compiler/std|Standard libraries and RTOS for C-|
+|/mcu |Code for RP2040 disk emulator|
 
 ### Quickstart Simulation
 
@@ -35,6 +36,14 @@ Copy generated binary into `cpu/rtl/sim_build/program.hex`. Run the following co
 python run_sim.py
 ```
 
+### Processor features:
+
+* 5-Stage pipelined core @ 100 MHz.
+* 512 KB of cached SRAM (32 KB L1 Cache).
+* VGA controller and dedicated display buffer.
+* 16 KB of single cycle access instruction memory. 
+* UART interface for extrenal communication.
+
 ### C- features supported:
 
 C- is a subset of C that supports a limited number of features that make it possible to create a wide range of programs. Below are supported C features:
@@ -51,5 +60,6 @@ More features are planned to be added in the future. See documentation for a mor
 
 * A limited RISC-V like instruction set. See documentation for more details.
 * Interrupts (via C- `IRQ_handler()`)
-* Task scheduling (software side)
+* Task scheduling (software side round robin)
 * Integrated PIT
+* Builtin VGA MMIO and controller
